@@ -1,18 +1,29 @@
 import React from "react";
-import { mockGalleryData } from "../utils/mockData";
-import { Card } from "../Components/Card";
+import { Hero } from "../Components/Hero";
+import { ProjectsSection } from "../Components/ProjectsSection";
+import { ContactSection } from "../Components/ContactSection";
 
 export const Landing: React.FC = () => {
   return (
-    <div className="flex flex-wrap h-fit w-full justify-center items-center gap-8 ">
-      {mockGalleryData?.map((item) => (
-        <div
-          className="w-fit min-h-full flex justify-center items-center p-8"
-          key={item.id}
-        >
-          <Card cardData={item} />
-        </div>
-      ))}
+    <div className="w-full">
+      {/* Hero Section */}
+      <Hero />
+
+      {/* Divider */}
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
+      </div>
+
+      {/* Projects Section */}
+      <ProjectsSection />
+
+      {/* Divider */}
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
+      </div>
+
+      {/* Contact Section */}
+      <ContactSection />
     </div>
   );
 };
