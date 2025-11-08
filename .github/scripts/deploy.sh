@@ -41,6 +41,22 @@ fi
 sudo chown -R pi:pi "$APP_DIR"
 echo "✅ Application deployed to $APP_DIR"
 
+# Configure nginx if not already configured
+echo "🌐 Configuring nginx..."
+if [ ! -f "/etc/nginx/sites-available/kh-brogrammers.com" ]; then
+    echo "📁 Setting up nginx configuration..."
+    if [ -f "./nginx/nginx.sh" ]; then
+        sudo chmod +x ./nginx/nginx.sh
+        ./nginx/nginx.sh
+    else
+        echo "⚠️  nginx script not found at ./nginx/nginx.sh"
+        echo "ℹ️  Please ensure nginx configuration script exists"
+    fi
+else
+    echo "✅ nginx already configured, reloading..."
+    sudo systemctl reload nginx
+fi
+
 echo "🔄 Restarting application service..."
 sudo systemctl restart my-app-service 2>/dev/null || echo "ℹ️  If this is first deployment, create service with: sudo systemctl enable my-app-service"
 
@@ -48,3 +64,4 @@ echo "🎉 SECURE DEPLOYMENT COMPLETED!"
 echo "✅ 100% SOURCE CODE FREE - Only built artifacts on Raspberry Pi"
 echo "✅ Source code remains exclusively on GitHub"
 echo "✅ Intellectual property protected"
+echo "✅ nginx configured for kh-brogrammers.com"
