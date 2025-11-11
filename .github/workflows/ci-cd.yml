@@ -9,3 +9,7 @@ jobs:
     name: Build
     uses: ./.github/workflows/build.yml  # Call the reusable workflow
     
+  deploy:
+    name: Deploy
+    needs: build  # Ensure deployment runs after build
+    uses: ./.github/workflows/deploy.yml  # Call the reusable deployment workflow

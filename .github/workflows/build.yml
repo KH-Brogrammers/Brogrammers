@@ -132,7 +132,7 @@ jobs:
       run: |
         echo "✅ Artifact 'deployment-build' uploaded successfully!"
         echo "📁 Path: deployment-package/"
-        echo "⏰ Retention: 3 days"
+        echo "⏰ Retention: 7 days"
     
     - name: 🔍 DEBUG - Build Complete
       run: |

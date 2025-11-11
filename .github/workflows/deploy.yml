@@ -10,13 +10,26 @@ jobs:
     runs-on: self-hosted
     
     steps:
+    # 📁 File Listing Steps
+    - name: Install tree command
+      run: |
+        echo "📦 Installing tree command..."
+        sudo apt-get update
+        sudo apt-get install -y tree
+
     - name: Download deployment artifact
       uses: actions/download-artifact@v4
       with:
         name: deployment-build
         path: /opt/app-deployment
         github-token: ${{ secrets.GITHUB_TOKEN }}
-    
+      
+    - name: List downloaded artifact contents
+      run: |
+        echo "📦 DOWNLOADED ARTIFACT CONTENTS:"
+        ls -la /opt/app-deployment/
+        tree /opt/app-deployment/
+
     - name: Verify artifact download
       run: |
         if [ ! -f "/opt/app-deployment/package.json" ]; then
@@ -28,18 +41,32 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '22.x'
         cache: 'npm'
         cache-dependency-path: '/opt/app-deployment/package-lock.json'
     
+    - name: 🔍 DEBUG - Node Environment
+      run: |
+        echo "🔍 DEBUG: Node.js version: $(node --version)"
+        echo "🔍 DEBUG: NPM version: $(npm --version)"
+        echo "🔍 DEBUG: NPM cache location: $(npm config get cache)"
+        echo "🔍 DEBUG: Package.json exists: $(test -f package.json && echo 'YES' || echo 'NO')"
+
     - name: Install production dependencies
       run: |
         cd /opt/app-deployment
         npm ci --only=production --omit=dev
+        npm i
         echo "Production dependencies installed"
+        echo "🔍 DEBUG: Dependencies installed successfully"
+        echo "🔍 DEBUG: Node modules size: $(du -sh node_modules/ 2>/dev/null || echo 'N/A')"
+        ls -la node_modules/ | head -20
     
     - name: Make deploy script executable
-      run: chmod +x ./.github/scripts/deploy.sh
+      run: |
+        echo "🔍 DEBUG: Making deploy script executable..."
+        chmod +x ./.github/scripts/deploy.sh
+        echo "🔍 DEBUG: deploy script permissions: $(ls -la ./.github/scripts/deploy.sh)"
     
     - name: Deploy to application directory
       run: ./.github/scripts/deploy.sh
