@@ -9,15 +9,25 @@ jobs:
   Build:
     name: Build and Package
     runs-on: ubuntu-latest
+
     
     steps:
-    - name: Checkout repository
+    # 📁 File Listing Steps
+    - name: Install tree command
       run: |
-        echo "🔍 DEBUG: Checking out repository..."
-    - uses: actions/checkout@v4
+        echo "📦 Installing tree command..."
+        sudo apt-get update
+        sudo apt-get install -y tree
+
+    - name: Checkout repository
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0  # Fetch all history for accurate builds
-      
+
+    - name: List repository files
+      run: |
+        echo "🔍 DEBUG: Repository contents:"
+        tree -a -I      
     
     - name: 🔍 DEBUG - Build Environment Info
       run: |
@@ -52,8 +62,10 @@ jobs:
       run: |
         echo "🔍 DEBUG: Starting npm ci..."
         npm ci
+        npm i
         echo "🔍 DEBUG: Dependencies installed successfully"
         echo "🔍 DEBUG: Node modules size: $(du -sh node_modules/ 2>/dev/null || echo 'N/A')"
+        ls -la node_modules/ | head -20
     
     - name: 🏗️ Build Application
       run: |
@@ -62,6 +74,7 @@ jobs:
         echo "🔍 DEBUG: Build completed"
         echo "🔍 DEBUG: Dist directory exists: $(test -d dist && echo 'YES' || echo 'NO')"
         echo "🔍 DEBUG: Dist contents: $(ls -la dist/ 2>/dev/null || echo 'No dist directory')"
+        tree -a -I dist/
     
     - name: Make build script executable
       run: |
@@ -90,6 +103,28 @@ jobs:
         name: deployment-build
         path: deployment-package/
         retention-days: 3
+
+    - name: List deployment package contents BEFORE upload
+      run: |
+        echo "📦 DEPLOYMENT PACKAGE CONTENTS (BEFORE UPLOAD):"
+        echo "=============================================="
+        if [ -d "deployment-package" ]; then
+          echo "🌳 Tree structure:"
+          find deployment-package/ -type f | sed 's|deployment-package/||' | sort | sed 's|[^/]*/|- |g'
+          echo ""
+          echo "📊 File details:"
+          ls -la deployment-package/
+          echo ""
+          echo "📈 Total files: $(find deployment-package/ -type f | wc -l)"
+        else
+          echo "❌ deployment-package directory not found!"
+        fi
+
+    - name: Show artifact upload confirmation
+      run: |
+        echo "✅ Artifact 'deployment-build' uploaded successfully!"
+        echo "📁 Path: deployment-package/"
+        echo "⏰ Retention: 3 days"
     
     - name: 🔍 DEBUG - Build Complete
       run: |
