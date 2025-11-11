@@ -2,7 +2,7 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ "main", "deploy-1.0.0" ]
+    branches: ["deploy-1.0.0" ]
 
 jobs:
   trigger-build:
