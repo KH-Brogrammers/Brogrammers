@@ -2,9 +2,7 @@ name: CI/CD Pipeline
 
 on:
   push:
-      branches:
-        - main
-        - deploye-1.0.0
+    branches: [ "main", "deploy-1.0.0" ]
 
 jobs:
   trigger-build:
@@ -17,7 +15,7 @@ jobs:
     - name: Trigger Build Workflow
       run: |
         echo "🔍 DEBUG: Repository: ${{ github.repository }}"
-        echo "🔍 DEBUG: Current Branch: ${{ github.ref_name }}"
+        echo "🔍 DEBUG: Branch: ${{ github.ref_name }}"
         
         # First, let's check what workflows exist
         echo "🔍 DEBUG: Checking available workflows..."
@@ -40,15 +38,12 @@ jobs:
           exit 1
         fi
         
-        # Try current branch first, then fallback to main
-        TARGET_BRANCH="${{ github.ref_name }}"
-        echo "📡 Triggering build workflow with ID: $WORKFLOW_ID on branch: $TARGET_BRANCH"
-        
+        echo "📡 Triggering build workflow with ID: $WORKFLOW_ID"
         RESPONSE=$(curl -s -w "%{http_code}" -X POST \
           -H "Accept: application/vnd.github.v3+json" \
           -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           "https://api.github.com/repos/${{ github.repository }}/actions/workflows/$WORKFLOW_ID/dispatches" \
-          -d "{\"ref\":\"$TARGET_BRANCH\"}")
+          -d '{"ref":"${{ github.ref_name }}"}')
         
         HTTP_CODE="${RESPONSE: -3}"
         BODY="${RESPONSE%???}"
@@ -57,26 +52,7 @@ jobs:
         echo "🔍 DEBUG: Response Body: $BODY"
         
         if [ "$HTTP_CODE" = "204" ]; then
-          echo "✅ Build workflow triggered successfully on $TARGET_BRANCH!"
-        elif [ "$TARGET_BRANCH" != "main" ]; then
-          echo "⚠️ Failed on $TARGET_BRANCH, trying main branch..."
-          
-          RESPONSE=$(curl -s -w "%{http_code}" -X POST \
-            -H "Accept: application/vnd.github.v3+json" \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/$WORKFLOW_ID/dispatches" \
-            -d '{"ref":"main"}')
-          
-          HTTP_CODE="${RESPONSE: -3}"
-          BODY="${RESPONSE%???}"
-          
-          if [ "$HTTP_CODE" = "204" ]; then
-            echo "✅ Build workflow triggered successfully on main branch!"
-          else
-            echo "❌ Failed to trigger build workflow on both branches"
-            echo "Response: $BODY"
-            exit 1
-          fi
+          echo "✅ Build workflow triggered successfully!"
         else
           echo "❌ Failed to trigger build workflow"
           echo "Response: $BODY"
