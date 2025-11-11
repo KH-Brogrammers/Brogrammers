@@ -74,3 +74,4 @@ fi
 echo "📁 Deployment package contents:"
 ls -la "$DEPLOY_DIR"/
 echo "✅ DEPLOYMENT PACKAGE CREATED - 100% SOURCE CODE FREE - Only built artifacts!"
+echo "🔍 DEBUG: This will be stored as artifact with run number and as latest version"
