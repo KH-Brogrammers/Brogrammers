@@ -73,7 +73,7 @@ jobs:
         echo "🔍 DEBUG: Build completed"
         echo "🔍 DEBUG: Dist directory exists: $(test -d dist && echo 'YES' || echo 'NO')"
         echo "🔍 DEBUG: Dist contents: $(ls -la dist/ 2>/dev/null || echo 'No dist directory')"
-        tree -a -I dist/
+        tree -I dist/
     
     - name: Make build script executable
       run: |
@@ -96,13 +96,6 @@ jobs:
         fi
         echo "✅ SECURITY CLEARED: Artifact contains only built files"
     
-    - name: Upload deployment artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: deployment-build
-        path: deployment-package/
-        retention-days: 3
-
     - name: List deployment package contents BEFORE upload
       run: |
         echo "📦 DEPLOYMENT PACKAGE CONTENTS (BEFORE UPLOAD):"
@@ -113,12 +106,20 @@ jobs:
           echo ""
           echo "📊 File details:"
           ls -la deployment-package/
+          tree deployment-package/
           echo ""
           echo "📈 Total files: $(find deployment-package/ -type f | wc -l)"
         else
           echo "❌ deployment-package directory not found!"
         fi
 
+    - name: Upload deployment artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: deployment-build
+        path: deployment-package/
+        retention-days: 3
+        
     - name: Show artifact upload confirmation
       run: |
         echo "✅ Artifact 'deployment-build' uploaded successfully!"
