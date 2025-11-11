@@ -39,10 +39,10 @@ jobs:
         echo "Production dependencies installed"
     
     - name: Make deploy script executable
-      run: chmod +x ./scripts/deploy.sh
+      run: chmod +x ./.github/scripts/deploy.sh
     
     - name: Deploy to application directory
-      run: ./scripts/deploy.sh
+      run: ./.github/scripts/deploy.sh
     
     - name: Deployment Success
       run: echo "🎉 Deployment completed successfully! Only built artifacts are on Raspberry Pi - no source code!"

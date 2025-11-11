@@ -22,10 +22,10 @@ jobs:
     - run: npm run build --if-present
     
     - name: Make build script executable
-      run: chmod +x ./deploy/build.sh
+      run: chmod +x ./.github/scripts/build.sh
     
     - name: Create deployment package
-      run: ./deploy/build.sh
+      run: ./.github/scripts/build.sh
     
     - name: Final Security Verification
       run: |

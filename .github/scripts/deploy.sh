@@ -40,9 +40,9 @@ echo "✅ Application deployed to $APP_DIR"
 echo "🌐 Configuring nginx..."
 if [ ! -f "/etc/nginx/sites-available/brogrammers" ]; then
     echo "📁 Setting up nginx..."
-    if [ -f "./nginx/nginx.sh" ]; then
-        sudo chmod +x ./nginx/nginx.sh
-        ./nginx/nginx.sh
+    if [ -f "./.github/nginx/nginx.sh" ]; then
+        sudo chmod +x ./.github/nginx/nginx.sh
+        ./.github/nginx/nginx.sh
     else
         echo "⚠️ nginx script not found"
     fi
