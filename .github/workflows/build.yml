@@ -44,4 +44,8 @@ jobs:
         retention-days: 3
     
     - name: Build Complete
-      run: echo "🎉 Build completed successfully! Artifact ready for deployment."
+      run: |
+        echo "🎉 Build completed successfully! Artifact ready for deployment."
+        echo "🔍 DEBUG: Build workflow finished at $(date)"
+        echo "🔍 DEBUG: Deployment package contents:"
+        ls -la deployment-package/ 2>/dev/null || echo "No deployment package found"

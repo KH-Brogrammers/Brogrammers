@@ -4,6 +4,9 @@
 set -e
 
 echo "🔨 Creating deployment package..."
+echo "🔍 DEBUG: Current directory: $(pwd)"
+echo "🔍 DEBUG: Available files: $(ls -la)"
+
 DEPLOY_DIR="deployment-package"
 
 # Clean or create deployment directory
@@ -16,10 +19,14 @@ else
 fi
 
 echo "📦 Copying ONLY built artifacts..."
+echo "🔍 DEBUG: Checking for dist directory: $(ls -la dist/ 2>/dev/null || echo 'dist not found')"
+
 # Copy ONLY the essential built files
-cp -r dist/* "$DEPLOY_DIR"/ 2>/dev/null || true
-cp package.json "$DEPLOY_DIR"/ 2>/dev/null || true
-cp package-lock.json "$DEPLOY_DIR"/ 2>/dev/null || true
+cp -r dist/* "$DEPLOY_DIR"/ 2>/dev/null || echo "⚠️ No dist files to copy"
+cp package.json "$DEPLOY_DIR"/ 2>/dev/null || echo "⚠️ No package.json to copy"
+cp package-lock.json "$DEPLOY_DIR"/ 2>/dev/null || echo "⚠️ No package-lock.json to copy"
+
+echo "🔍 DEBUG: Files copied to $DEPLOY_DIR: $(ls -la $DEPLOY_DIR/ 2>/dev/null || echo 'empty')"
 
 # REMOVE ANY POTENTIAL SOURCE CODE FILES
 echo "🧹 STRICT CLEANING - Removing ALL source files..."
