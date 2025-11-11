@@ -51,5 +51,5 @@ jobs:
             owner: context.repo.owner,
             repo: context.repo.repo,
             workflow_id: 'deploy.yml',
-            ref: 'main'
+            ref: context.ref.replace('refs/heads/', '')
           });
