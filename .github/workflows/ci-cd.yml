@@ -2,10 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ "main", "deploy-1.0.0"]
+    branches: [ "main", "deploy-1.0.0" ]
 
 jobs:
   build:
     name: Build
     uses: ./.github/workflows/build.yml  # Call the reusable workflow
-    

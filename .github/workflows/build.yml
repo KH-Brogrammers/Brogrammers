@@ -11,7 +11,29 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+    - name: Checkout repository
+      run: |
+        echo "🔍 DEBUG: Checking out repository..."
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history for accurate builds
+      
+    
+    - name: 🔍 DEBUG - Build Environment Info
+      run: |
+        echo "🔍 DEBUG: Build Workflow Started"
+        echo "🔍 DEBUG: Repository: ${{ github.repository }}"
+        echo "🔍 DEBUG: Branch: ${{ github.ref_name }}"
+        echo "🔍 DEBUG: Commit: ${{ github.sha }}"
+        echo "🔍 DEBUG: Actor: ${{ github.actor }}"
+        echo "🔍 DEBUG: Event: ${{ github.event_name }}"
+        echo "🔍 DEBUG: Workflow: ${{ github.workflow }}"
+        echo "🔍 DEBUG: Job: ${{ github.job }}"
+        echo "🔍 DEBUG: Runner OS: ${{ runner.os }}"
+        echo "🔍 DEBUG: Runner Arch: ${{ runner.arch }}"
+        echo "🔍 DEBUG: Current Directory: $(pwd)"
+        echo "🔍 DEBUG: Available Disk Space: $(df -h . | tail -1)"
+        echo "🔍 DEBUG: Memory Info: $(free -h)"
     
     - name: Use Node.js
       uses: actions/setup-node@v4
@@ -19,14 +41,39 @@ jobs:
         node-version: '22.x'
         cache: 'npm'
     
-    - run: npm ci
-    - run: npm run build --if-present
+    - name: 🔍 DEBUG - Node Environment
+      run: |
+        echo "🔍 DEBUG: Node.js version: $(node --version)"
+        echo "🔍 DEBUG: NPM version: $(npm --version)"
+        echo "🔍 DEBUG: NPM cache location: $(npm config get cache)"
+        echo "🔍 DEBUG: Package.json exists: $(test -f package.json && echo 'YES' || echo 'NO')"
+    
+    - name: 📦 Install Dependencies
+      run: |
+        echo "🔍 DEBUG: Starting npm ci..."
+        npm ci
+        echo "🔍 DEBUG: Dependencies installed successfully"
+        echo "🔍 DEBUG: Node modules size: $(du -sh node_modules/ 2>/dev/null || echo 'N/A')"
+    
+    - name: 🏗️ Build Application
+      run: |
+        echo "🔍 DEBUG: Starting build process..."
+        npm run build --if-present
+        echo "🔍 DEBUG: Build completed"
+        echo "🔍 DEBUG: Dist directory exists: $(test -d dist && echo 'YES' || echo 'NO')"
+        echo "🔍 DEBUG: Dist contents: $(ls -la dist/ 2>/dev/null || echo 'No dist directory')"
     
     - name: Make build script executable
-      run: chmod +x ./.github/scripts/build.sh
+      run: |
+        echo "🔍 DEBUG: Making build script executable..."
+        chmod +x ./.github/scripts/build.sh
+        echo "🔍 DEBUG: Build script permissions: $(ls -la ./.github/scripts/build.sh)"
     
-    - name: Create deployment package
-      run: ./.github/scripts/build.sh
+    - name: 📦 Create deployment package
+      run: |
+        echo "🔍 DEBUG: Starting deployment package creation..."
+        ./.github/scripts/build.sh
+        echo "🔍 DEBUG: Deployment package creation completed"
     
     - name: Final Security Verification
       run: |
@@ -44,9 +91,11 @@ jobs:
         path: deployment-package/
         retention-days: 3
     
-    - name: Build Complete
+    - name: 🔍 DEBUG - Build Complete
       run: |
         echo "🎉 Build completed successfully! Artifact ready for deployment."
         echo "🔍 DEBUG: Build workflow finished at $(date)"
-        echo "🔍 DEBUG: Deployment package contents:"
+        echo "🔍 DEBUG: Final deployment package contents:"
         ls -la deployment-package/ 2>/dev/null || echo "No deployment package found"
+        echo "🔍 DEBUG: Artifact upload completed"
+        echo "🔍 DEBUG: Build job ending..."
