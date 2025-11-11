@@ -2,7 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ "main", "deploy-1.0.0" ]
+      branches:
+        - main
+        - deploye-1.0.0
 
 jobs:
   trigger-build:
@@ -15,15 +17,38 @@ jobs:
     - name: Trigger Build Workflow
       run: |
         echo "🔍 DEBUG: Repository: ${{ github.repository }}"
-        echo "🔍 DEBUG: Branch: ${{ github.ref_name }}"
-        echo "🔍 DEBUG: API URL: https://api.github.com/repos/${{ github.repository }}/actions/workflows/build.yml/dispatches"
+        echo "🔍 DEBUG: Current Branch: ${{ github.ref_name }}"
         
-        echo "📡 Triggering build workflow..."
+        # First, let's check what workflows exist
+        echo "🔍 DEBUG: Checking available workflows..."
+        curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/repos/${{ github.repository }}/actions/workflows" | \
+          jq -r '.workflows[] | "\(.id): \(.name) - \(.path)"'
+        
+        # Try to get the workflow ID for build.yml
+        WORKFLOW_ID=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/repos/${{ github.repository }}/actions/workflows" | \
+          jq -r '.workflows[] | select(.path == ".github/workflows/build.yml") | .id')
+        
+        echo "🔍 DEBUG: Build workflow ID: $WORKFLOW_ID"
+        
+        if [ "$WORKFLOW_ID" = "null" ] || [ -z "$WORKFLOW_ID" ]; then
+          echo "❌ Build workflow not found! Available workflows:"
+          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows" | \
+            jq -r '.workflows[] | "- \(.name) (\(.path))"'
+          exit 1
+        fi
+        
+        # Try current branch first, then fallback to main
+        TARGET_BRANCH="${{ github.ref_name }}"
+        echo "📡 Triggering build workflow with ID: $WORKFLOW_ID on branch: $TARGET_BRANCH"
+        
         RESPONSE=$(curl -s -w "%{http_code}" -X POST \
           -H "Accept: application/vnd.github.v3+json" \
           -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          https://api.github.com/repos/${{ github.repository }}/actions/workflows/build.yml/dispatches \
-          -d '{"ref":"${{ github.ref_name }}"}')
+          "https://api.github.com/repos/${{ github.repository }}/actions/workflows/$WORKFLOW_ID/dispatches" \
+          -d "{\"ref\":\"$TARGET_BRANCH\"}")
         
         HTTP_CODE="${RESPONSE: -3}"
         BODY="${RESPONSE%???}"
@@ -32,7 +57,26 @@ jobs:
         echo "🔍 DEBUG: Response Body: $BODY"
         
         if [ "$HTTP_CODE" = "204" ]; then
-          echo "✅ Build workflow triggered successfully!"
+          echo "✅ Build workflow triggered successfully on $TARGET_BRANCH!"
+        elif [ "$TARGET_BRANCH" != "main" ]; then
+          echo "⚠️ Failed on $TARGET_BRANCH, trying main branch..."
+          
+          RESPONSE=$(curl -s -w "%{http_code}" -X POST \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/$WORKFLOW_ID/dispatches" \
+            -d '{"ref":"main"}')
+          
+          HTTP_CODE="${RESPONSE: -3}"
+          BODY="${RESPONSE%???}"
+          
+          if [ "$HTTP_CODE" = "204" ]; then
+            echo "✅ Build workflow triggered successfully on main branch!"
+          else
+            echo "❌ Failed to trigger build workflow on both branches"
+            echo "Response: $BODY"
+            exit 1
+          fi
         else
           echo "❌ Failed to trigger build workflow"
           echo "Response: $BODY"
