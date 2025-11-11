@@ -1,47 +1,35 @@
-name: Build and Deploy
+name: CI/CD Pipeline
 
 on:
   push:
     branches: [ "main", "deploy-1.0.0" ]
 
 jobs:
-  build-and-deploy:
-    name: Build and Deploy
+  Tests:
+    name: Run Tests
     runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [22.x]
     
     steps:
     - uses: actions/checkout@v4
     
-    - name: Use Node.js
+    - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
-        node-version: '22.x'
+        node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    
-    - run: npm ci
-    - run: npm run build --if-present
-    
-    - name: Make build script executable
-      run: chmod +x ./.github/scripts/build.sh
-    
-    - name: Create deployment package
-      run: ./.github/scripts/build.sh
-    
-    - name: Final Security Verification
-      run: |
-        echo "🔍 FINAL SECURITY SCAN - Ensuring no source code in artifact..."
-        if find "deployment-package" \( -name "*.ts" -o -name "*.tsx" -o -name "*.jsx" -o -name "src" \) 2>/dev/null | grep -q .; then
-          echo "❌ DEPLOYMENT BLOCKED: Source code detected!"
-          exit 1
-        fi
-        echo "✅ SECURITY CLEARED: Artifact contains only built files"
-    
-    - name: Upload deployment artifact
-      uses: actions/upload-artifact@v4
+        
+    - name: Trigger Build Workflow
+      uses: actions/github-script@v7
       with:
-        name: deployment-build
-        path: deployment-package/
-        retention-days: 3
-    
-    - name: Deploy notification
-      run: echo "🎉 Build completed successfully! Artifact ready for deployment."
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          await github.rest.actions.createWorkflowDispatch({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            workflow_id: 'build.yml',
+            ref: context.ref.replace('refs/heads/', '')
+          });
