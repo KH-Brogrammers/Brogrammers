@@ -11,5 +11,10 @@ jobs:
     
   deploy:
     name: Deploy
-    needs: build  # Ensure deployment runs after build
-    uses: ./.github/workflows/deploy.yml  # Call the reusable deployment workflow
+    needs: build
+    uses: ./.github/workflows/deploy.yml  # Call the deploy workflow
+    secrets:
+      BROGRAMMERS_VPN: ${{ secrets.BROGRAMMERS_VPN }}
+      SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+      SSH_KEY: ${{ secrets.SSH_KEY }}
+      WORK_FOLDER: ${{ secrets.WORK_FOLDER }}

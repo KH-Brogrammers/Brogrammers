@@ -1,56 +1,57 @@
 #!/bin/bash
-# deploy.sh - Deploy application to Raspberry Pi
-# ENSURES NO SOURCE CODE is stored on target machine
+# deploy.sh - Deploy application to server with cleanup
 set -e
 
-APP_DIR="/var/www/my-app"
-echo "🚀 Starting deployment process..."
+echo "🚀 Starting server deployment process..."
+echo "🔍 DEBUG: Work folder: $WORK_FOLDER"
 
-# Verify downloaded artifact contains NO source code
-echo "🔍 Verifying artifact contains NO source code..."
-if find "/opt/app-deployment" \( -name "*.ts" -o -name "*.tsx" -o -name "*.jsx" -o -name "src" \) 2>/dev/null | grep -q .; then
-    echo "❌ Source code detected in artifact!"
+# Verify required environment variables
+if [ -z "$WORK_FOLDER" ]; then
+    echo "❌ Error: WORK_FOLDER environment variable not set!"
     exit 1
 fi
 
-echo "✅ Artifact verification passed"
-
-if [ ! -d "$APP_DIR" ]; then
-    echo "📁 Creating application directory: $APP_DIR"
-    sudo mkdir -p "$APP_DIR"
-fi
-
-echo "🧹 Cleaning previous deployment..."
-sudo find "$APP_DIR" -maxdepth 1 ! -name 'node_modules' ! -path "$APP_DIR" -exec rm -rf {} + 2>/dev/null || true
-
-echo "📦 Copying new deployment..."
-sudo cp -r /opt/app-deployment/* "$APP_DIR"/
-
-# Final security check
-echo "🔍 Final security check..."
-if find "$APP_DIR" \( -name "*.ts" -o -name "*.tsx" -o -name "*.jsx" -o -name "src" \) 2>/dev/null | grep -q .; then
-    echo "❌ Source code detected on target!"
-    exit 1
-fi
-
-sudo chown -R pi:pi "$APP_DIR"
-echo "✅ Application deployed to $APP_DIR"
-
-# Configure nginx
-echo "🌐 Configuring nginx..."
-if [ ! -f "/etc/nginx/sites-available/brogrammers" ]; then
-    echo "📁 Setting up nginx..."
-    if [ -f "./.github/nginx/nginx.sh" ]; then
-        sudo chmod +x ./.github/nginx/nginx.sh
-        ./.github/nginx/nginx.sh
-    else
-        echo "⚠️ nginx script not found"
-    fi
+# Create backup of current deployment
+echo "🔍 DEBUG: Creating backup of current deployment..."
+if [ -d "$WORK_FOLDER" ]; then
+    BACKUP_DIR="${WORK_FOLDER}.backup.$(date +%Y%m%d_%H%M%S)"
+    cp -r "$WORK_FOLDER" "$BACKUP_DIR"
+    echo "🔍 DEBUG: Backup created at $BACKUP_DIR"
 else
-    echo "✅ nginx configured, reloading..."
-    sudo systemctl reload nginx
+    echo "🔍 DEBUG: No existing deployment to backup"
 fi
 
-echo "🎉 Deployment completed!"
-echo "✅ Only built artifacts on Raspberry Pi"
-echo "✅ Source code remains on GitHub"
+# Create work directory if it doesn't exist
+mkdir -p "$WORK_FOLDER"
+
+# Extract new deployment
+echo "🔍 DEBUG: Extracting new deployment..."
+cd "$WORK_FOLDER"
+tar -xzf /tmp/deployment.tar.gz
+
+echo "🔍 DEBUG: Deployment files extracted to $WORK_FOLDER"
+echo "🔍 DEBUG: Deployment contents:"
+ls -la "$WORK_FOLDER"
+
+# Cleanup unnecessary files from server
+echo "🧹 Cleaning up unnecessary files..."
+
+# Remove development files if they exist
+find "$WORK_FOLDER" -name "*.map" -delete 2>/dev/null || true
+find "$WORK_FOLDER" -name "*.d.ts" -delete 2>/dev/null || true
+find "$WORK_FOLDER" -name ".DS_Store" -delete 2>/dev/null || true
+find "$WORK_FOLDER" -name "Thumbs.db" -delete 2>/dev/null || true
+
+# Remove temporary files
+rm -f /tmp/deployment.tar.gz
+rm -f /tmp/deploy.sh
+
+# Clean old backups (keep only last 2)
+echo "🧹 Cleaning old backups..."
+ls -dt ${WORK_FOLDER}.backup.* 2>/dev/null | tail -n +3 | xargs rm -rf 2>/dev/null || true
+
+echo "🔍 DEBUG: Final deployment contents:"
+ls -la "$WORK_FOLDER"
+
+echo "✅ Server deployment completed successfully!"
+echo "🧹 All unnecessary files cleaned up!"

@@ -1,75 +1,82 @@
 name: Deploy to Production
 
 on:
-  workflow_dispatch:  # Allows manual triggering
-  repository_dispatch:  # Allows API triggering
+  workflow_call:
+    secrets:
+      BROGRAMMERS_VPN:
+        required: true
+      SSH_PASSWORD:
+        required: true
+      SSH_KEY:
+        required: true
+      WORK_FOLDER:
+        required: true
 
 jobs:
   Deploy:
-    name: Deploy to Raspberry Pi
-    runs-on: self-hosted
+    name: Deploy to Server
+    runs-on: ubuntu-latest
     
     steps:
-    # 📁 File Listing Steps
-    - name: Install tree command
+    - uses: actions/checkout@v4
+    
+    - name: 🔍 DEBUG - Deploy Environment Info
       run: |
-        echo "📦 Installing tree command..."
-        sudo apt-get update
-        sudo apt-get install -y tree
-
-    - name: Download deployment artifact
+        echo "🔍 DEBUG: Deploy Workflow Started"
+        echo "🔍 DEBUG: Repository: ${{ github.repository }}"
+        echo "🔍 DEBUG: Branch: ${{ github.ref_name }}"
+        echo "🔍 DEBUG: Commit: ${{ github.sha }}"
+        echo "🔍 DEBUG: Work Folder: ${{ secrets.WORK_FOLDER }}"
+        echo "🔍 DEBUG: Current Directory: $(pwd)"
+    
+    - name: 📦 Download deployment artifact
       uses: actions/download-artifact@v4
       with:
-        name: deployment-build
-        path: /opt/app-deployment
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-      
-    - name: List downloaded artifact contents
-      run: |
-        echo "📦 DOWNLOADED ARTIFACT CONTENTS:"
-        ls -la /opt/app-deployment/
-        tree /opt/app-deployment/
-
-    - name: Verify artifact download
-      run: |
-        if [ ! -f "/opt/app-deployment/package.json" ]; then
-          echo "❌ Error: Artifact not downloaded properly!"
-          exit 1
-        fi
-        echo "✅ Artifact downloaded successfully!"
+        name: deployment-build-latest
+        path: ./deployment-package
     
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '22.x'
-        cache: 'npm'
-        cache-dependency-path: '/opt/app-deployment/package-lock.json'
-    
-    - name: 🔍 DEBUG - Node Environment
+    - name: 🔍 DEBUG - Artifact Verification
       run: |
-        echo "🔍 DEBUG: Node.js version: $(node --version)"
-        echo "🔍 DEBUG: NPM version: $(npm --version)"
-        echo "🔍 DEBUG: NPM cache location: $(npm config get cache)"
-        echo "🔍 DEBUG: Package.json exists: $(test -f package.json && echo 'YES' || echo 'NO')"
-
-    - name: Install production dependencies
+        echo "🔍 DEBUG: Artifact Download Complete"
+        echo "🔍 DEBUG: Deployment Package Contents:"
+        ls -la ./deployment-package/ || echo "❌ No deployment package found"
+        echo "🔍 DEBUG: Artifact Size:"
+        du -sh ./deployment-package/ || echo "❌ Cannot calculate size"
+    
+    - name: 🔑 Setup SSH Key
       run: |
-        cd /opt/app-deployment
-        npm ci --only=production --omit=dev
-        npm i
-        echo "Production dependencies installed"
-        echo "🔍 DEBUG: Dependencies installed successfully"
-        echo "🔍 DEBUG: Node modules size: $(du -sh node_modules/ 2>/dev/null || echo 'N/A')"
-        ls -la node_modules/ | head -20
+        echo "🔍 DEBUG: Setting up SSH key..."
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.BROGRAMMERS_VPN }} >> ~/.ssh/known_hosts
+        echo "🔍 DEBUG: SSH key configured"
     
-    - name: Make deploy script executable
+    - name: 🚀 Deploy to Server
       run: |
-        echo "🔍 DEBUG: Making deploy script executable..."
-        chmod +x ./.github/scripts/deploy.sh
-        echo "🔍 DEBUG: deploy script permissions: $(ls -la ./.github/scripts/deploy.sh)"
+        echo "🔍 DEBUG: Starting deployment to server..."
+        echo "🔍 DEBUG: Connecting to: ${{ secrets.BROGRAMMERS_VPN }}"
+        echo "🔍 DEBUG: Target folder: ${{ secrets.WORK_FOLDER }}"
+        
+        # Create deployment package archive
+        tar -czf deployment.tar.gz -C ./deployment-package .
+        
+        # Copy files and deploy script to server
+        scp -i ~/.ssh/id_rsa deployment.tar.gz root@${{ secrets.BROGRAMMERS_VPN }}:/tmp/
+        scp -i ~/.ssh/id_rsa ./.github/scripts/deploy.sh root@${{ secrets.BROGRAMMERS_VPN }}:/tmp/
+        
+        # Execute deployment script on server
+        ssh -i ~/.ssh/id_rsa root@${{ secrets.BROGRAMMERS_VPN }} << EOF
+          echo "🔍 DEBUG: Connected to server successfully"
+          chmod +x /tmp/deploy.sh
+          WORK_FOLDER="${{ secrets.WORK_FOLDER }}" /tmp/deploy.sh
+          echo "✅ Deployment completed successfully!"
+        EOF
+        
+        echo "🎉 Deployment to server completed!"
     
-    - name: Deploy to application directory
-      run: ./.github/scripts/deploy.sh
-    
-    - name: Deployment Success
-      run: echo "🎉 Deployment completed successfully! Only built artifacts are on Raspberry Pi - no source code!"
+    - name: 🧹 Cleanup
+      run: |
+        echo "🔍 DEBUG: Cleaning up SSH keys..."
+        rm -f ~/.ssh/id_rsa
+        echo "🔍 DEBUG: Cleanup completed"
