@@ -23,8 +23,8 @@ fi
 
 # Function to copy files with SSH key
 copy_with_key() {
-    scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -o ConnectTimeout=10 deployment.tar.gz $USERNAME@$PUBLIC_IP:/tmp/ &&
-    scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $0 $USERNAME@$PUBLIC_IP:/tmp/deploy.sh
+    scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=10 deployment.tar.gz $USERNAME@$PUBLIC_IP:/tmp/ &&
+    scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no $0 $USERNAME@$PUBLIC_IP:/tmp/deploy.sh
 }
 
 # Function to copy files with password
@@ -35,7 +35,7 @@ copy_with_password() {
 
 # Function to execute remote deployment with SSH key
 execute_with_key() {
-    ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $USERNAME@$PUBLIC_IP "PUBLIC_IP='$PUBLIC_IP' USERNAME='$USERNAME' /tmp/deploy.sh remote"
+    ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no $USERNAME@$PUBLIC_IP "PUBLIC_IP='$PUBLIC_IP' USERNAME='$USERNAME' /tmp/deploy.sh remote"
 }
 
 # Function to execute remote deployment with password
@@ -50,15 +50,23 @@ if [ "$1" = "remote" ]; then
     # Use home/brogrammers directory for deployment
     DEPLOY_DIR="$HOME/brogrammers"
     
+    # Clean up old deployment files first
+    echo "🧹 Cleaning up old deployment files..."
+    rm -f /tmp/deployment.tar.gz 2>/dev/null || true
+    
     # Create backup of current deployment
     echo "🔍 DEBUG: Creating backup of current deployment..."
     if [ -d "$DEPLOY_DIR" ]; then
         BACKUP_DIR="${DEPLOY_DIR}.backup.$(date +%Y%m%d_%H%M%S)"
         cp -r "$DEPLOY_DIR" "$BACKUP_DIR"
         echo "🔍 DEBUG: Backup created at $BACKUP_DIR"
+        
+        # Remove old deployment directory for fresh start
+        echo "🧹 Removing old deployment directory for fresh deployment..."
+        rm -rf "$DEPLOY_DIR"
     fi
 
-    # Create deployment directory if it doesn't exist
+    # Create fresh deployment directory
     mkdir -p "$DEPLOY_DIR"
     cd "$DEPLOY_DIR"
 
@@ -82,9 +90,9 @@ if [ "$1" = "remote" ]; then
     rm -f /tmp/deployment.tar.gz
     rm -f /tmp/deploy.sh
     
-    # Clean old backups (keep only last 2)
+    # Clean old backups (keep only last 1)
     echo "🧹 Cleaning old backups..."
-    ls -dt ${DEPLOY_DIR}.backup.* 2>/dev/null | tail -n +3 | xargs rm -rf 2>/dev/null || true
+    ls -dt ${DEPLOY_DIR}.backup.* 2>/dev/null | tail -n +2 | xargs rm -rf 2>/dev/null || true
 
     echo "🔍 DEBUG: Final deployment contents:"
     ls -la .
@@ -96,23 +104,19 @@ else
     # Local execution - copy files and execute remotely
     echo "🚀 Starting deployment to server..."
     
+    # Clean up any old local deployment files
+    echo "🧹 Cleaning up old local deployment files..."
+    rm -f deployment.tar.gz 2>/dev/null || true
+    
     # Copy important credentials for deployment
-    echo "🔑 Setting up deployment credentials..."
-    if [ -n "$SSH_PRIVATE_KEY" ] && [ -n "$SSH_PUBLIC_KEY" ]; then
-        mkdir -p ~/.ssh
-        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-        echo "$SSH_PUBLIC_KEY" > ~/.ssh/id_rsa.pub
-        chmod 600 ~/.ssh/id_rsa
-        chmod 644 ~/.ssh/id_rsa.pub
-        echo "🔍 DEBUG: SSH keys configured for deployment"
-    fi
+    echo "🔑 Using existing SSH keys for deployment..."
     
     # Create deployment package
     echo "📦 Creating deployment package..."
     tar -czf deployment.tar.gz -C ./deployment-package .
     
     # Try SSH key first, fallback to password
-    if [ -f ~/.ssh/id_rsa ] && copy_with_key 2>/dev/null; then
+    if [ -f ~/.ssh/id_ed25519 ] && copy_with_key 2>/dev/null; then
         echo "✅ SSH key authentication successful"
         execute_with_key
     elif [ -n "$SSH_LOGIN_PASSWORD" ]; then
@@ -125,22 +129,12 @@ else
     fi
     
     # Cleanup local files and credentials properly
-    echo "🧹 Cleaning up local files and credentials..."
+    echo "🧹 Cleaning up local files..."
     rm -f deployment.tar.gz
-    
-    # Remove SSH credentials securely
-    if [ -f ~/.ssh/id_rsa ]; then
-        shred -vfz -n 3 ~/.ssh/id_rsa 2>/dev/null || rm -f ~/.ssh/id_rsa
-        echo "🔍 DEBUG: SSH private key securely removed"
-    fi
-    if [ -f ~/.ssh/id_rsa.pub ]; then
-        rm -f ~/.ssh/id_rsa.pub
-        echo "🔍 DEBUG: SSH public key removed"
-    fi
     
     # Clear any temporary credential variables
     unset SSH_PRIVATE_KEY SSH_PUBLIC_KEY SSH_LOGIN_PASSWORD
     
     echo "✅ Deployment completed successfully!"
-    echo "🧹 All credentials cleaned up securely!"
+    echo "🧹 All temporary files cleaned up!"
 fi
