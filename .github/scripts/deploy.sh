@@ -74,17 +74,26 @@ if [ "$1" = "remote" ]; then
         echo "🔍 DEBUG: No existing deployment to backup"
     fi
 
-    # Create work directory if it doesn't exist
+    # Create work directory and parent directories if they don't exist
+    echo "🔍 DEBUG: Creating work directory: $WORK_FOLDER"
     mkdir -p "$WORK_FOLDER"
 
     # Extract new deployment
     echo "🔍 DEBUG: Extracting new deployment..."
     cd "$WORK_FOLDER"
+    
+    # Check if deployment archive exists
+    if [ ! -f "/tmp/deployment.tar.gz" ]; then
+        echo "❌ Error: Deployment archive not found at /tmp/deployment.tar.gz"
+        exit 1
+    fi
+    
     tar -xzf /tmp/deployment.tar.gz
 
     echo "🔍 DEBUG: Deployment files extracted to $WORK_FOLDER"
+    echo "🔍 DEBUG: Current directory: $(pwd)"
     echo "🔍 DEBUG: Deployment contents:"
-    ls -la "$WORK_FOLDER"
+    ls -la "$WORK_FOLDER" || echo "❌ Cannot list directory contents"
 
     # Cleanup unnecessary files from server
     echo "🧹 Cleaning up unnecessary files..."
@@ -102,7 +111,13 @@ if [ "$1" = "remote" ]; then
     ls -dt ${WORK_FOLDER}.backup.* 2>/dev/null | tail -n +3 | xargs rm -rf 2>/dev/null || true
 
     echo "🔍 DEBUG: Final deployment contents:"
-    ls -la "$WORK_FOLDER"
+    if [ -d "$WORK_FOLDER" ]; then
+        ls -la "$WORK_FOLDER"
+        echo "🔍 DEBUG: Directory size: $(du -sh "$WORK_FOLDER" 2>/dev/null || echo 'Unknown')"
+    else
+        echo "❌ Work folder does not exist: $WORK_FOLDER"
+        exit 1
+    fi
 
     echo "✅ Server deployment completed successfully!"
     echo "🧹 All unnecessary files cleaned up!"
