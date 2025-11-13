@@ -9,6 +9,8 @@ on:
         required: true
       SSH_KEY:
         required: true
+      SSH_PASSWORD:
+        required: true
       USERNAME:
         required: true
       WORK_FOLDER:
@@ -28,31 +30,13 @@ jobs:
         name: deployment-build-latest
         path: ./deployment-package
     
-    - name: 🔑 Setup SSH Keys
+    - name: 🚀 Execute Deployment Script
       run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-        echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa.pub
-        chmod 600 ~/.ssh/id_rsa
-        chmod 644 ~/.ssh/id_rsa.pub
-    
-    - name: 🚀 Deploy to Server
-      run: |
-        echo "🚀 Starting deployment..."
-        
-        # Create deployment package
-        tar -czf deployment.tar.gz -C ./deployment-package .
-        
-        # Copy files to server
-        scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no deployment.tar.gz ${{ secrets.USERNAME }}@${{ secrets.BROGRAMMERS_VPN }}:/tmp/
-        scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ./.github/scripts/deploy.sh ${{ secrets.USERNAME }}@${{ secrets.BROGRAMMERS_VPN }}:/tmp/
-        
-        # Execute deployment script
-        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.USERNAME }}@${{ secrets.BROGRAMMERS_VPN }} "chmod +x /tmp/deploy.sh && WORK_FOLDER='${{ secrets.WORK_FOLDER }}' /tmp/deploy.sh"
-        
-        echo "✅ Deployment completed!"
-    
-    - name: 🧹 Cleanup
-      run: |
-        rm -f deployment.tar.gz
-        rm -f ~/.ssh/id_rsa ~/.ssh/id_rsa.pub
+        chmod +x ./.github/scripts/deploy.sh
+        WORK_FOLDER="${{ secrets.WORK_FOLDER }}" \
+        BROGRAMMERS_VPN="${{ secrets.BROGRAMMERS_VPN }}" \
+        USERNAME="${{ secrets.USERNAME }}" \
+        SSH_PRIVATE_KEY="${{ secrets.SSH_PRIVATE_KEY }}" \
+        SSH_KEY="${{ secrets.SSH_KEY }}" \
+        SSH_PASSWORD="${{ secrets.SSH_PASSWORD }}" \
+        ./.github/scripts/deploy.sh

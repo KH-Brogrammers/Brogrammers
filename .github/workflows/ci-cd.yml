@@ -17,5 +17,6 @@ jobs:
       BROGRAMMERS_VPN: ${{ secrets.BROGRAMMERS_VPN }}
       SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
       SSH_KEY: ${{ secrets.SSH_KEY }}
+      SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
       USERNAME: ${{ secrets.USERNAME }}
       WORK_FOLDER: ${{ secrets.WORK_FOLDER }}
