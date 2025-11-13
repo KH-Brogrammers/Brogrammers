@@ -24,23 +24,17 @@ jobs:
     
     - name: 🌐 Execute Nginx Configuration
       run: |
-        PUBLIC_IP="${{ secrets.PUBLIC_IP }}" \
-        USERNAME="${{ secrets.USERNAME }}" \
-        SSH_PRIVATE_KEY="${{ secrets.SSH_PRIVATE_KEY }}" \
-        SSH_PUBLIC_KEY="${{ secrets.SSH_PUBLIC_KEY }}" \
-        SSH_LOGIN_PASSWORD="${{ secrets.SSH_LOGIN_PASSWORD }}" \
-        bash -c '
         echo "🌐 Starting nginx configuration..."
+        echo "🔑 Using password authentication..."
         
-        if [ -f ~/.ssh/id_ed25519 ]; then
-          echo "🔑 Using SSH key authentication..."
-          scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no ./.github/scripts/nginx.sh $USERNAME@$PUBLIC_IP:/tmp/
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no $USERNAME@$PUBLIC_IP "chmod +x /tmp/nginx.sh && sudo /tmp/nginx.sh"
-        else
-          echo "🔑 Using password authentication..."
-          sshpass -p "$SSH_LOGIN_PASSWORD" scp -o StrictHostKeyChecking=no ./.github/scripts/nginx.sh $USERNAME@$PUBLIC_IP:/tmp/
-          sshpass -p "$SSH_LOGIN_PASSWORD" ssh -o StrictHostKeyChecking=no $USERNAME@$PUBLIC_IP "chmod +x /tmp/nginx.sh && sudo /tmp/nginx.sh"
+        # Install sshpass if needed
+        if ! command -v sshpass &> /dev/null; then
+          sudo apt-get update -qq
+          sudo apt-get install -y sshpass
         fi
         
+        # Copy and execute nginx script
+        sshpass -p "${{ secrets.SSH_LOGIN_PASSWORD }}" scp -o StrictHostKeyChecking=no ./.github/scripts/nginx.sh ${{ secrets.USERNAME }}@${{ secrets.PUBLIC_IP }}:/tmp/
+        sshpass -p "${{ secrets.SSH_LOGIN_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.USERNAME }}@${{ secrets.PUBLIC_IP }} "chmod +x /tmp/nginx.sh && sudo /tmp/nginx.sh"
+        
         echo "✅ Nginx configuration completed!"
-        '
