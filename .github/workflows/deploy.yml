@@ -5,7 +5,7 @@ on:
     secrets:
       BROGRAMMERS_VPN:
         required: true
-      SSH_PASSWORD:
+      SSH_PRIVATE_KEY:
         required: true
       SSH_KEY:
         required: true
@@ -17,19 +17,10 @@ on:
 jobs:
   Deploy:
     name: Deploy to Server
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     
     steps:
     - uses: actions/checkout@v4
-    
-    - name: 🔍 DEBUG - Deploy Environment Info
-      run: |
-        echo "🔍 DEBUG: Deploy Workflow Started"
-        echo "🔍 DEBUG: Repository: ${{ github.repository }}"
-        echo "🔍 DEBUG: Branch: ${{ github.ref_name }}"
-        echo "🔍 DEBUG: Commit: ${{ github.sha }}"
-        echo "🔍 DEBUG: Work Folder: ${{ secrets.WORK_FOLDER }}"
-        echo "🔍 DEBUG: Current Directory: $(pwd)"
     
     - name: 📦 Download deployment artifact
       uses: actions/download-artifact@v4
@@ -37,51 +28,31 @@ jobs:
         name: deployment-build-latest
         path: ./deployment-package
     
-    - name: 🔍 DEBUG - Artifact Verification
+    - name: 🔑 Setup SSH Keys
       run: |
-        echo "🔍 DEBUG: Artifact Download Complete"
-        echo "🔍 DEBUG: Deployment Package Contents:"
-        ls -la ./deployment-package/ || echo "❌ No deployment package found"
-        echo "🔍 DEBUG: Artifact Size:"
-        du -sh ./deployment-package/ || echo "❌ Cannot calculate size"
-    
-    - name: 🔑 Setup SSH with Password Authentication
-      run: |
-        echo "🔍 DEBUG: Setting up SSH with password authentication..."
-        sudo apt-get update
-        sudo apt-get install -y sshpass
-        
-        # Add server to known hosts for security
         mkdir -p ~/.ssh
-        ssh-keyscan -H ${{ secrets.BROGRAMMERS_VPN }} >> ~/.ssh/known_hosts
-        echo "🔍 DEBUG: SSH configured with host verification"
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa.pub
+        chmod 600 ~/.ssh/id_rsa
+        chmod 644 ~/.ssh/id_rsa.pub
     
     - name: 🚀 Deploy to Server
       run: |
-        echo "🔍 DEBUG: Starting deployment to server..."
-        echo "🔍 DEBUG: Connecting to: ${{ secrets.BROGRAMMERS_VPN }}"
-        echo "🔍 DEBUG: Username: ${{ secrets.USERNAME }}"
-        echo "🔍 DEBUG: Target folder: ${{ secrets.WORK_FOLDER }}"
+        echo "🚀 Starting deployment..."
         
-        # Create deployment package archive
+        # Create deployment package
         tar -czf deployment.tar.gz -C ./deployment-package .
         
-        # Copy files and deploy script to server using password authentication
-        sshpass -p "${{ secrets.SSH_PASSWORD }}" scp deployment.tar.gz ${{ secrets.USERNAME }}@${{ secrets.BROGRAMMERS_VPN }}:/tmp/
-        sshpass -p "${{ secrets.SSH_PASSWORD }}" scp ./.github/scripts/deploy.sh ${{ secrets.USERNAME }}@${{ secrets.BROGRAMMERS_VPN }}:/tmp/
+        # Copy files to server
+        scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no deployment.tar.gz ${{ secrets.USERNAME }}@${{ secrets.BROGRAMMERS_VPN }}:/tmp/
+        scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ./.github/scripts/deploy.sh ${{ secrets.USERNAME }}@${{ secrets.BROGRAMMERS_VPN }}:/tmp/
         
-        # Execute deployment script on server
-        sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh ${{ secrets.USERNAME }}@${{ secrets.BROGRAMMERS_VPN }} << 'EOF'
-          echo "🔍 DEBUG: Connected to server successfully"
-          chmod +x /tmp/deploy.sh
-          WORK_FOLDER="${{ secrets.WORK_FOLDER }}" /tmp/deploy.sh
-          echo "✅ Deployment completed successfully!"
-        EOF
+        # Execute deployment script
+        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.USERNAME }}@${{ secrets.BROGRAMMERS_VPN }} "chmod +x /tmp/deploy.sh && WORK_FOLDER='${{ secrets.WORK_FOLDER }}' /tmp/deploy.sh"
         
-        echo "🎉 Deployment to server completed!"
+        echo "✅ Deployment completed!"
     
     - name: 🧹 Cleanup
       run: |
-        echo "🔍 DEBUG: Cleaning up temporary files..."
         rm -f deployment.tar.gz
-        echo "🔍 DEBUG: Cleanup completed"
+        rm -f ~/.ssh/id_rsa ~/.ssh/id_rsa.pub

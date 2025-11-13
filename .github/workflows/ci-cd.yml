@@ -15,7 +15,7 @@ jobs:
     uses: ./.github/workflows/deploy.yml  # Call the deploy workflow
     secrets:
       BROGRAMMERS_VPN: ${{ secrets.BROGRAMMERS_VPN }}
-      SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
       SSH_KEY: ${{ secrets.SSH_KEY }}
       USERNAME: ${{ secrets.USERNAME }}
       WORK_FOLDER: ${{ secrets.WORK_FOLDER }}
