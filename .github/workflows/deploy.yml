@@ -3,17 +3,15 @@ name: Deploy to Production
 on:
   workflow_call:
     secrets:
-      BROGRAMMERS_VPN:
+      PUBLIC_IP:
+        required: true
+      SSH_PUBLIC_KEY:
         required: true
       SSH_PRIVATE_KEY:
         required: true
-      SSH_KEY:
-        required: true
-      SSH_PASSWORD:
+      SSH_LOGIN_PASSWORD:
         required: true
       USERNAME:
-        required: true
-      WORK_FOLDER:
         required: true
 
 jobs:
@@ -33,10 +31,9 @@ jobs:
     - name: 🚀 Execute Deployment Script
       run: |
         chmod +x ./.github/scripts/deploy.sh
-        WORK_FOLDER="${{ secrets.WORK_FOLDER }}" \
-        BROGRAMMERS_VPN="${{ secrets.BROGRAMMERS_VPN }}" \
+        PUBLIC_IP="${{ secrets.PUBLIC_IP }}" \
         USERNAME="${{ secrets.USERNAME }}" \
         SSH_PRIVATE_KEY="${{ secrets.SSH_PRIVATE_KEY }}" \
-        SSH_KEY="${{ secrets.SSH_KEY }}" \
-        SSH_PASSWORD="${{ secrets.SSH_PASSWORD }}" \
+        SSH_PUBLIC_KEY="${{ secrets.SSH_PUBLIC_KEY }}" \
+        SSH_LOGIN_PASSWORD="${{ secrets.SSH_LOGIN_PASSWORD }}" \
         ./.github/scripts/deploy.sh

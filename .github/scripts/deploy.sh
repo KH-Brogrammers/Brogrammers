@@ -1,32 +1,21 @@
 #!/bin/bash
-# deploy.sh - Complete deployment script with SSH authentication fallback
+# deploy.sh - Simple deployment script with SSH authentication
 set -e
 
 echo "🚀 Starting server deployment process..."
 
 # Verify required environment variables
-if [ -z "$WORK_FOLDER" ] || [ -z "$BROGRAMMERS_VPN" ] || [ -z "$USERNAME" ]; then
+if [ -z "$PUBLIC_IP" ] || [ -z "$USERNAME" ]; then
     echo "❌ Error: Required environment variables not set!"
-    echo "Required: WORK_FOLDER, BROGRAMMERS_VPN, USERNAME"
+    echo "Required: PUBLIC_IP, USERNAME"
     exit 1
 fi
 
-echo "🔍 DEBUG: Work folder: $WORK_FOLDER"
-echo "🔍 DEBUG: Target server: $BROGRAMMERS_VPN"
+echo "🔍 DEBUG: Target server: $PUBLIC_IP"
 echo "🔍 DEBUG: Username: $USERNAME"
 
-# Setup SSH keys if provided
-if [ -n "$SSH_PRIVATE_KEY" ] && [ -n "$SSH_KEY" ]; then
-    echo "🔑 Setting up SSH keys..."
-    mkdir -p ~/.ssh
-    echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-    echo "$SSH_KEY" > ~/.ssh/id_rsa.pub
-    chmod 600 ~/.ssh/id_rsa
-    chmod 644 ~/.ssh/id_rsa.pub
-fi
-
 # Install sshpass if needed
-if [ -n "$SSH_PASSWORD" ] && ! command -v sshpass &> /dev/null; then
+if [ -n "$SSH_LOGIN_PASSWORD" ] && ! command -v sshpass &> /dev/null; then
     echo "📦 Installing sshpass..."
     sudo apt-get update -qq
     sudo apt-get install -y sshpass
@@ -34,122 +23,91 @@ fi
 
 # Function to copy files with SSH key
 copy_with_key() {
-    scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -o ConnectTimeout=10 deployment.tar.gz $USERNAME@$BROGRAMMERS_VPN:/tmp/ &&
-    scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $0 $USERNAME@$BROGRAMMERS_VPN:/tmp/deploy.sh
+    scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -o ConnectTimeout=10 deployment.tar.gz $USERNAME@$PUBLIC_IP:/tmp/ &&
+    scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $0 $USERNAME@$PUBLIC_IP:/tmp/deploy.sh
 }
 
 # Function to copy files with password
 copy_with_password() {
-    sshpass -p "$SSH_PASSWORD" scp -o StrictHostKeyChecking=no deployment.tar.gz $USERNAME@$BROGRAMMERS_VPN:/tmp/ &&
-    sshpass -p "$SSH_PASSWORD" scp -o StrictHostKeyChecking=no $0 $USERNAME@$BROGRAMMERS_VPN:/tmp/deploy.sh
+    sshpass -p "$SSH_LOGIN_PASSWORD" scp -o StrictHostKeyChecking=no deployment.tar.gz $USERNAME@$PUBLIC_IP:/tmp/ &&
+    sshpass -p "$SSH_LOGIN_PASSWORD" scp -o StrictHostKeyChecking=no $0 $USERNAME@$PUBLIC_IP:/tmp/deploy.sh
 }
 
 # Function to execute remote deployment with SSH key
 execute_with_key() {
-    ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $USERNAME@$BROGRAMMERS_VPN "chmod +x /tmp/deploy.sh && WORK_FOLDER='$WORK_FOLDER' BROGRAMMERS_VPN='$BROGRAMMERS_VPN' USERNAME='$USERNAME' /tmp/deploy.sh remote"
+    ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $USERNAME@$PUBLIC_IP "/tmp/deploy.sh remote"
 }
 
 # Function to execute remote deployment with password
 execute_with_password() {
-    sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no $USERNAME@$BROGRAMMERS_VPN "chmod +x /tmp/deploy.sh && WORK_FOLDER='$WORK_FOLDER' BROGRAMMERS_VPN='$BROGRAMMERS_VPN' USERNAME='$USERNAME' /tmp/deploy.sh remote"
+    sshpass -p "$SSH_LOGIN_PASSWORD" ssh -o StrictHostKeyChecking=no $USERNAME@$PUBLIC_IP "/tmp/deploy.sh remote"
 }
 
 # Check if this is remote execution
 if [ "$1" = "remote" ]; then
     echo "🔍 DEBUG: Executing on remote server..."
     
-    # Verify WORK_FOLDER is set for remote execution
-    if [ -z "$WORK_FOLDER" ]; then
-        echo "❌ Error: WORK_FOLDER not set for remote execution!"
-        exit 1
-    fi
+    # Use home/brogrammers directory for deployment
+    DEPLOY_DIR="$HOME/brogrammers"
     
     # Create backup of current deployment
     echo "🔍 DEBUG: Creating backup of current deployment..."
-    if [ -d "$WORK_FOLDER" ]; then
-        BACKUP_DIR="${WORK_FOLDER}.backup.$(date +%Y%m%d_%H%M%S)"
-        cp -r "$WORK_FOLDER" "$BACKUP_DIR"
+    if [ -d "$DEPLOY_DIR" ]; then
+        BACKUP_DIR="${DEPLOY_DIR}.backup.$(date +%Y%m%d_%H%M%S)"
+        cp -r "$DEPLOY_DIR" "$BACKUP_DIR"
         echo "🔍 DEBUG: Backup created at $BACKUP_DIR"
-    else
-        echo "🔍 DEBUG: No existing deployment to backup"
     fi
 
-    # Create work directory and parent directories if they don't exist
-    echo "🔍 DEBUG: Creating work directory: $WORK_FOLDER"
-    echo "🔍 DEBUG: Current user: $(whoami)"
-    echo "🔍 DEBUG: Current directory before mkdir: $(pwd)"
-    echo "🔍 DEBUG: Home directory: $HOME"
-    
-    # Try to create the directory
-    if mkdir -p "$WORK_FOLDER" 2>/dev/null; then
-        echo "🔍 DEBUG: Directory created/exists successfully"
-    else
-        echo "❌ ERROR: Failed to create directory $WORK_FOLDER"
-        echo "🔍 DEBUG: Trying to create in home directory instead..."
-        WORK_FOLDER="$HOME/deployment"
-        mkdir -p "$WORK_FOLDER"
-        echo "🔍 DEBUG: Using fallback directory: $WORK_FOLDER"
-    fi
-    
-    echo "🔍 DEBUG: Directory permissions: $(ls -ld "$WORK_FOLDER" 2>/dev/null || echo 'Cannot check permissions')"
+    # Create deployment directory if it doesn't exist
+    mkdir -p "$DEPLOY_DIR"
+    cd "$DEPLOY_DIR"
 
     # Extract new deployment
     echo "🔍 DEBUG: Extracting new deployment..."
-    echo "🔍 DEBUG: Changing to directory: $WORK_FOLDER"
-    cd "$WORK_FOLDER"
-    
-    # Check if deployment archive exists
-    if [ ! -f "/tmp/deployment.tar.gz" ]; then
-        echo "❌ Error: Deployment archive not found at /tmp/deployment.tar.gz"
-        echo "🔍 DEBUG: Contents of /tmp/:"
-        ls -la /tmp/ | grep -E "(deploy|tar)" || echo "No deployment files found"
-        exit 1
-    fi
-    
-    echo "🔍 DEBUG: Archive size: $(ls -lh /tmp/deployment.tar.gz)"
     tar -xzf /tmp/deployment.tar.gz
     
-    echo "🔍 DEBUG: Extraction completed"
-    echo "🔍 DEBUG: Files in current directory after extraction:"
-    ls -la . || echo "Cannot list current directory"
-    
-    echo "🔍 DEBUG: Deployment files extracted to $WORK_FOLDER"
-    echo "🔍 DEBUG: Current directory: $(pwd)"
+    echo "🔍 DEBUG: Deployment files extracted to $DEPLOY_DIR"
     echo "🔍 DEBUG: Deployment contents:"
-    ls -la "$WORK_FOLDER" || echo "❌ Cannot list directory contents"
+    ls -la .
 
-    # Cleanup unnecessary files from server
+    # Cleanup unnecessary files
     echo "🧹 Cleaning up unnecessary files..."
-    find "$WORK_FOLDER" -name "*.map" -delete 2>/dev/null || true
-    find "$WORK_FOLDER" -name "*.d.ts" -delete 2>/dev/null || true
-    find "$WORK_FOLDER" -name ".DS_Store" -delete 2>/dev/null || true
-    find "$WORK_FOLDER" -name "Thumbs.db" -delete 2>/dev/null || true
+    find . -name "*.map" -delete 2>/dev/null || true
+    find . -name "*.d.ts" -delete 2>/dev/null || true
+    find . -name ".DS_Store" -delete 2>/dev/null || true
+    find . -name "Thumbs.db" -delete 2>/dev/null || true
 
-    # Remove temporary files
+    # Remove temporary files and credentials
+    echo "🧹 Cleaning up temporary files and credentials..."
     rm -f /tmp/deployment.tar.gz
     rm -f /tmp/deploy.sh
-
+    
     # Clean old backups (keep only last 2)
     echo "🧹 Cleaning old backups..."
-    ls -dt ${WORK_FOLDER}.backup.* 2>/dev/null | tail -n +3 | xargs rm -rf 2>/dev/null || true
+    ls -dt ${DEPLOY_DIR}.backup.* 2>/dev/null | tail -n +3 | xargs rm -rf 2>/dev/null || true
 
     echo "🔍 DEBUG: Final deployment contents:"
-    if [ -d "$WORK_FOLDER" ]; then
-        ls -la "$WORK_FOLDER"
-        echo "🔍 DEBUG: Directory size: $(du -sh "$WORK_FOLDER" 2>/dev/null || echo 'Unknown')"
-    else
-        echo "❌ Work folder does not exist: $WORK_FOLDER"
-        exit 1
-    fi
+    ls -la .
+    echo "🔍 DEBUG: Directory size: $(du -sh . 2>/dev/null || echo 'Unknown')"
 
     echo "✅ Server deployment completed successfully!"
-    echo "🧹 All unnecessary files cleaned up!"
     
 else
     # Local execution - copy files and execute remotely
     echo "🚀 Starting deployment to server..."
     
-    # Create deployment package (only locally)
+    # Copy important credentials for deployment
+    echo "🔑 Setting up deployment credentials..."
+    if [ -n "$SSH_PRIVATE_KEY" ] && [ -n "$SSH_PUBLIC_KEY" ]; then
+        mkdir -p ~/.ssh
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+        echo "$SSH_PUBLIC_KEY" > ~/.ssh/id_rsa.pub
+        chmod 600 ~/.ssh/id_rsa
+        chmod 644 ~/.ssh/id_rsa.pub
+        echo "🔍 DEBUG: SSH keys configured for deployment"
+    fi
+    
+    # Create deployment package
     echo "📦 Creating deployment package..."
     tar -czf deployment.tar.gz -C ./deployment-package .
     
@@ -157,7 +115,7 @@ else
     if [ -f ~/.ssh/id_rsa ] && copy_with_key 2>/dev/null; then
         echo "✅ SSH key authentication successful"
         execute_with_key
-    elif [ -n "$SSH_PASSWORD" ]; then
+    elif [ -n "$SSH_LOGIN_PASSWORD" ]; then
         echo "🔑 Using password authentication..."
         copy_with_password
         execute_with_password
@@ -166,10 +124,23 @@ else
         exit 1
     fi
     
-    # Cleanup local files
-    echo "🧹 Cleaning up local files..."
+    # Cleanup local files and credentials properly
+    echo "🧹 Cleaning up local files and credentials..."
     rm -f deployment.tar.gz
-    rm -f ~/.ssh/id_rsa ~/.ssh/id_rsa.pub 2>/dev/null || true
+    
+    # Remove SSH credentials securely
+    if [ -f ~/.ssh/id_rsa ]; then
+        shred -vfz -n 3 ~/.ssh/id_rsa 2>/dev/null || rm -f ~/.ssh/id_rsa
+        echo "🔍 DEBUG: SSH private key securely removed"
+    fi
+    if [ -f ~/.ssh/id_rsa.pub ]; then
+        rm -f ~/.ssh/id_rsa.pub
+        echo "🔍 DEBUG: SSH public key removed"
+    fi
+    
+    # Clear any temporary credential variables
+    unset SSH_PRIVATE_KEY SSH_PUBLIC_KEY SSH_LOGIN_PASSWORD
     
     echo "✅ Deployment completed successfully!"
+    echo "🧹 All credentials cleaned up securely!"
 fi
