@@ -35,12 +35,12 @@ copy_with_password() {
 
 # Function to execute remote deployment with SSH key
 execute_with_key() {
-    ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $USERNAME@$PUBLIC_IP "/tmp/deploy.sh remote"
+    ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $USERNAME@$PUBLIC_IP "PUBLIC_IP='$PUBLIC_IP' USERNAME='$USERNAME' /tmp/deploy.sh remote"
 }
 
 # Function to execute remote deployment with password
 execute_with_password() {
-    sshpass -p "$SSH_LOGIN_PASSWORD" ssh -o StrictHostKeyChecking=no $USERNAME@$PUBLIC_IP "/tmp/deploy.sh remote"
+    sshpass -p "$SSH_LOGIN_PASSWORD" ssh -o StrictHostKeyChecking=no $USERNAME@$PUBLIC_IP "PUBLIC_IP='$PUBLIC_IP' USERNAME='$USERNAME' /tmp/deploy.sh remote"
 }
 
 # Check if this is remote execution
