@@ -7,7 +7,7 @@ echo "🔧 Configuring nginx for brogrammers deployment..."
 
 # Define variables
 DOMAIN="www.brogrammers.local.com"  # Change this to your domain
-APP_DIR="/home/$(whoami)/brogrammers"
+APP_DIR="/home/tagglabs/brogrammers"
 NGINX_AVAILABLE="/etc/nginx/sites-available"
 NGINX_ENABLED="/etc/nginx/sites-enabled"
 CONFIG_NAME="brogrammers"

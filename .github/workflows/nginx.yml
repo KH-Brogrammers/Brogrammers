@@ -38,3 +38,22 @@ jobs:
         sshpass -p "${{ secrets.SSH_LOGIN_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.USERNAME }}@${{ secrets.PUBLIC_IP }} "chmod +x /tmp/nginx.sh && sudo /tmp/nginx.sh"
         
         echo "✅ Nginx configuration completed!"
+    
+    - name: 🧪 Test Deployment
+      run: |
+        echo "🧪 Testing deployment..."
+        sleep 5  # Wait for nginx to fully restart
+        
+        # Test localhost access
+        sshpass -p "${{ secrets.SSH_LOGIN_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.USERNAME }}@${{ secrets.PUBLIC_IP }} '
+          echo "📁 Checking deployment files..."
+          ls -la /home/tagglabs/brogrammers/
+          
+          echo "🌐 Testing localhost access..."
+          curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" http://localhost || echo "❌ Localhost test failed"
+          
+          echo "📊 Nginx status check..."
+          sudo systemctl status nginx --no-pager --lines=3
+        '
+        
+        echo "✅ Deployment test completed!"
