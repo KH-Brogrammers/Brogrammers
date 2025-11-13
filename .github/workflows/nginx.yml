@@ -26,13 +26,12 @@ jobs:
       run: |
         echo "🌐 Starting nginx configuration..."
         
-        # Copy nginx script to server and execute
         if [ -f ~/.ssh/id_ed25519 ]; then
-          echo "🔑 Using SSH key authentication for nginx setup..."
+          echo "🔑 Using SSH key authentication..."
           scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no ./.github/scripts/nginx.sh ${{ secrets.USERNAME }}@${{ secrets.PUBLIC_IP }}:/tmp/
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no ${{ secrets.USERNAME }}@${{ secrets.PUBLIC_IP }} "chmod +x /tmp/nginx.sh && sudo /tmp/nginx.sh"
         else
-          echo "🔑 Using password authentication for nginx setup..."
+          echo "🔑 Using password authentication..."
           sshpass -p "${{ secrets.SSH_LOGIN_PASSWORD }}" scp -o StrictHostKeyChecking=no ./.github/scripts/nginx.sh ${{ secrets.USERNAME }}@${{ secrets.PUBLIC_IP }}:/tmp/
           sshpass -p "${{ secrets.SSH_LOGIN_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.USERNAME }}@${{ secrets.PUBLIC_IP }} "chmod +x /tmp/nginx.sh && sudo /tmp/nginx.sh"
         fi
