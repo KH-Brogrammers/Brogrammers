@@ -32,10 +32,6 @@ if [ -n "$SSH_PASSWORD" ] && ! command -v sshpass &> /dev/null; then
     sudo apt-get install -y sshpass
 fi
 
-# Create deployment package
-echo "📦 Creating deployment package..."
-tar -czf deployment.tar.gz -C ./deployment-package .
-
 # Function to copy files with SSH key
 copy_with_key() {
     scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -o ConnectTimeout=10 deployment.tar.gz $USERNAME@$BROGRAMMERS_VPN:/tmp/ &&
@@ -114,6 +110,10 @@ if [ "$1" = "remote" ]; then
 else
     # Local execution - copy files and execute remotely
     echo "🚀 Starting deployment to server..."
+    
+    # Create deployment package (only locally)
+    echo "📦 Creating deployment package..."
+    tar -czf deployment.tar.gz -C ./deployment-package .
     
     # Try SSH key first, fallback to password
     if [ -f ~/.ssh/id_rsa ] && copy_with_key 2>/dev/null; then
