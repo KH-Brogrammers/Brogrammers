@@ -68,11 +68,27 @@ if [ "$1" = "remote" ]; then
 
     # Extract new deployment first
     echo "🔍 DEBUG: Extracting new deployment..."
+    echo "🔍 DEBUG: Archive info: $(ls -lh /tmp/deployment.tar.gz 2>/dev/null || echo 'Archive not found')"
     tar -xzf /tmp/deployment.tar.gz
     
     echo "🔍 DEBUG: Deployment files extracted to $DEPLOY_DIR"
     echo "🔍 DEBUG: Deployment contents:"
     ls -la .
+    
+    echo "🌳 DEBUG: Directory tree structure:"
+    if command -v tree >/dev/null 2>&1; then
+        tree -a -L 3 .
+    else
+        find . -type d | head -20 | sed 's|[^/]*/|  |g'
+        echo "📁 Files:"
+        find . -type f | head -20 | sed 's|[^/]*/|  |g'
+    fi
+    
+    echo "📊 DEBUG: File count and sizes:"
+    echo "  Total files: $(find . -type f | wc -l)"
+    echo "  Total directories: $(find . -type d | wc -l)"
+    echo "  Largest files:"
+    find . -type f -exec ls -lh {} + | sort -k5 -hr | head -5 | awk '{print "    " $9 " (" $5 ")"}'
 
     # Now clean up deployment files after extraction
     echo "🧹 Cleaning up old deployment files..."
@@ -80,10 +96,24 @@ if [ "$1" = "remote" ]; then
 
     # Cleanup unnecessary files
     echo "🧹 Cleaning up unnecessary files..."
+    echo "🔍 DEBUG: Removing development files..."
+    
+    # Count files before cleanup
+    BEFORE_COUNT=$(find . -type f | wc -l)
+    
     find . -name "*.map" -delete 2>/dev/null || true
     find . -name "*.d.ts" -delete 2>/dev/null || true
     find . -name ".DS_Store" -delete 2>/dev/null || true
     find . -name "Thumbs.db" -delete 2>/dev/null || true
+    
+    # Count files after cleanup
+    AFTER_COUNT=$(find . -type f | wc -l)
+    REMOVED_COUNT=$((BEFORE_COUNT - AFTER_COUNT))
+    
+    echo "🔍 DEBUG: Cleanup summary:"
+    echo "  Files before cleanup: $BEFORE_COUNT"
+    echo "  Files after cleanup: $AFTER_COUNT"
+    echo "  Files removed: $REMOVED_COUNT"
 
     # Remove temporary files and credentials
     echo "🧹 Cleaning up temporary files and credentials..."
@@ -96,6 +126,21 @@ if [ "$1" = "remote" ]; then
     echo "🔍 DEBUG: Final deployment contents:"
     ls -la .
     echo "🔍 DEBUG: Directory size: $(du -sh . 2>/dev/null || echo 'Unknown')"
+    
+    echo "📋 DEBUG: Deployment Summary:"
+    echo "  📁 Deployment path: $DEPLOY_DIR"
+    echo "  📊 Total size: $(du -sh . | cut -f1)"
+    echo "  📄 File types:"
+    find . -type f -name "*.html" | wc -l | xargs echo "    HTML files:"
+    find . -type f -name "*.js" | wc -l | xargs echo "    JS files:"
+    find . -type f -name "*.css" | wc -l | xargs echo "    CSS files:"
+    find . -type f -name "*.json" | wc -l | xargs echo "    JSON files:"
+    find . -type f -name "*.webp" -o -name "*.png" -o -name "*.jpg" -o -name "*.svg" | wc -l | xargs echo "    Image files:"
+    
+    echo "🎯 DEBUG: Key files present:"
+    [ -f "index.html" ] && echo "  ✅ index.html" || echo "  ❌ index.html missing"
+    [ -f "package.json" ] && echo "  ✅ package.json" || echo "  ❌ package.json missing"
+    [ -d "assets" ] && echo "  ✅ assets/ directory" || echo "  ❌ assets/ directory missing"
 
     echo "✅ Server deployment completed successfully!"
     
