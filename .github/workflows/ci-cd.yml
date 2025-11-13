@@ -2,7 +2,7 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ "main", "deploy-1.0.1" ]
+    branches: [ "main", "deploy-1.0.2" ]
 
 jobs:
   build:
@@ -13,6 +13,17 @@ jobs:
     name: Deploy
     needs: build
     uses: ./.github/workflows/deploy.yml  # Call the deploy workflow
+    secrets:
+      PUBLIC_IP: ${{ secrets.PUBLIC_IP }}
+      SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      SSH_LOGIN_PASSWORD: ${{ secrets.SSH_LOGIN_PASSWORD }}
+      USERNAME: ${{ secrets.USERNAME }}
+           
+  configure-nginx:
+    name: Configure Nginx
+    needs: deploy
+    uses: ./.github/workflows/nginx.yml  # Call the nginx workflow
     secrets:
       PUBLIC_IP: ${{ secrets.PUBLIC_IP }}
       SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}

@@ -1,0 +1,40 @@
+name: Configure Nginx
+
+on:
+  workflow_call:
+    secrets:
+      PUBLIC_IP:
+        required: true
+      SSH_PRIVATE_KEY:
+        required: true
+      SSH_PUBLIC_KEY:
+        required: true
+      SSH_LOGIN_PASSWORD:
+        required: true
+      USERNAME:
+        required: true
+
+jobs:
+  Configure-Nginx:
+    name: Setup and Configure Nginx
+    runs-on: self-hosted
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: 🌐 Execute Nginx Configuration
+      run: |
+        echo "🌐 Starting nginx configuration..."
+        
+        # Copy nginx script to server and execute
+        if [ -f ~/.ssh/id_ed25519 ]; then
+          echo "🔑 Using SSH key authentication for nginx setup..."
+          scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no ./.github/scripts/nginx.sh ${{ secrets.USERNAME }}@${{ secrets.PUBLIC_IP }}:/tmp/
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no ${{ secrets.USERNAME }}@${{ secrets.PUBLIC_IP }} "chmod +x /tmp/nginx.sh && sudo /tmp/nginx.sh"
+        else
+          echo "🔑 Using password authentication for nginx setup..."
+          sshpass -p "${{ secrets.SSH_LOGIN_PASSWORD }}" scp -o StrictHostKeyChecking=no ./.github/scripts/nginx.sh ${{ secrets.USERNAME }}@${{ secrets.PUBLIC_IP }}:/tmp/
+          sshpass -p "${{ secrets.SSH_LOGIN_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.USERNAME }}@${{ secrets.PUBLIC_IP }} "chmod +x /tmp/nginx.sh && sudo /tmp/nginx.sh"
+        fi
+        
+        echo "✅ Nginx configuration completed!"

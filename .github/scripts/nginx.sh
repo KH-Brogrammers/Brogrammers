@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# nginx.sh - Configure nginx for kh-brogrammers.com (HTTP only)
+# nginx.sh - Configure nginx for brogrammers deployment
 set -e
 
-echo "🔧 Configuring nginx for kh-brogrammers.com (HTTP only)..."
+echo "🔧 Configuring nginx for brogrammers deployment..."
 
 # Define variables
-DOMAIN="kh-brogrammers.com"
-APP_DIR="/var/www/html/brogrammers-app"
+DOMAIN="www.brogrammers.local.com"  # Change this to your domain
+APP_DIR="/home/$(whoami)/brogrammers"
 NGINX_AVAILABLE="/etc/nginx/sites-available"
 NGINX_ENABLED="/etc/nginx/sites-enabled"
 CONFIG_NAME="brogrammers"
@@ -17,49 +17,42 @@ if ! command -v nginx &> /dev/null; then
     echo "📦 Installing nginx..."
     sudo apt update
     sudo apt install -y nginx
+    echo "✅ Nginx installed successfully"
+else
+    echo "✅ Nginx already installed"
 fi
 
 # Create nginx configuration directory if it doesn't exist
 sudo mkdir -p "$NGINX_AVAILABLE"
 sudo mkdir -p "$NGINX_ENABLED"
 
+# Check if configuration already exists
+if [ -f "$NGINX_AVAILABLE/$CONFIG_NAME" ]; then
+    echo "⚠️ Nginx configuration already exists, updating..."
+else
+    echo "📁 Creating new nginx configuration..."
+fi
+
 # Create nginx configuration
-echo "📁 Creating nginx configuration for $DOMAIN..."
+echo "📝 Writing nginx configuration for $DOMAIN..."
 
 sudo tee "$NGINX_AVAILABLE/$CONFIG_NAME" > /dev/null <<EOF
 server {
     listen 80;
     listen [::]:80;
     
-    server_name $DOMAIN www.$DOMAIN;
+    server_name $DOMAIN localhost;
     
     # Root directory
     root $APP_DIR;
     index index.html index.htm;
     
-    # Handle React Router or SPA (if applicable)
+    # Handle React Router or SPA
     location / {
         try_files \$uri \$uri/ /index.html;
     }
     
-    # API proxy (if you have a backend API)
-    # location /api/ {
-    #     proxy_pass http://localhost:3001;
-    #     proxy_http_version 1.1;
-    #     proxy_set_header Upgrade \$http_upgrade;
-    #     proxy_set_header Connection 'upgrade';
-    #     proxy_set_header Host \$host;
-    #     proxy_set_header X-Real-IP \$remote_addr;
-    #     proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    #     proxy_set_header X-Forwarded-Proto \$scheme;
-    #     proxy_cache_bypass \$http_upgrade;
-    # }
-    
-    # Static assets caching
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
+
     
     # Security - deny access to sensitive files
     location ~ /\. {
@@ -106,22 +99,28 @@ server {
 }
 EOF
 
-echo "✅ nginx configuration created at $NGINX_AVAILABLE/$CONFIG_NAME"
+echo "✅ Nginx configuration created at $NGINX_AVAILABLE/$CONFIG_NAME"
 
 # Enable the site
 echo "🔗 Enabling nginx site..."
 if [ -f "$NGINX_ENABLED/$CONFIG_NAME" ]; then
-    echo "⚠️  Site already enabled in $NGINX_ENABLED/$CONFIG_NAME, reloading configuration..."
-    sudo rm -f "$NGINX_ENABLED/default" 2>/dev/null || true
+    echo "⚠️ Site already enabled, reloading configuration..."
 else
     echo "🔗 Creating symlink from $NGINX_AVAILABLE/$CONFIG_NAME to $NGINX_ENABLED/$CONFIG_NAME"
     sudo ln -sf "$NGINX_AVAILABLE/$CONFIG_NAME" "$NGINX_ENABLED/$CONFIG_NAME"
-    sudo rm -f "$NGINX_ENABLED/default" 2>/dev/null || true
 fi
+
+# Remove default site if it exists
+sudo rm -f "$NGINX_ENABLED/default" 2>/dev/null || true
 
 # Test nginx configuration
 echo "🧪 Testing nginx configuration..."
-sudo nginx -t
+if sudo nginx -t; then
+    echo "✅ Nginx configuration test passed"
+else
+    echo "❌ Nginx configuration test failed"
+    exit 1
+fi
 
 # Restart nginx
 echo "🔄 Restarting nginx..."
@@ -129,15 +128,20 @@ sudo systemctl restart nginx
 sudo systemctl enable nginx
 
 # Check nginx status
-echo "📊 nginx status:"
-sudo systemctl status nginx --no-pager
+echo "📊 Nginx status:"
+sudo systemctl status nginx --no-pager --lines=5
 
-echo "🎉 nginx configuration completed!"
+echo "🎉 Nginx configuration completed!"
 echo ""
 echo "📁 Configuration Files:"
 echo "   Available: $NGINX_AVAILABLE/$CONFIG_NAME"
 echo "   Enabled:   $NGINX_ENABLED/$CONFIG_NAME"
 echo ""
-echo "🌐 Your app will be available at: http://$DOMAIN"
+echo "🌐 Your app is available at:"
+echo "   http://$DOMAIN"
+echo "   http://localhost"
 echo ""
-echo "✅ nginx is now configured for $DOMAIN with config name: $CONFIG_NAME (HTTP only)"
+echo "✅ Nginx is now configured for brogrammers deployment"
+
+# Cleanup
+rm -f /tmp/nginx.sh
