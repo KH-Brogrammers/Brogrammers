@@ -50,10 +50,6 @@ if [ "$1" = "remote" ]; then
     # Use home/brogrammers directory for deployment
     DEPLOY_DIR="$HOME/brogrammers"
     
-    # Clean up old deployment files first
-    echo "🧹 Cleaning up old deployment files..."
-    rm -f /tmp/deployment.tar.gz 2>/dev/null || true
-    
     # Create backup of current deployment
     echo "🔍 DEBUG: Creating backup of current deployment..."
     if [ -d "$DEPLOY_DIR" ]; then
@@ -70,13 +66,17 @@ if [ "$1" = "remote" ]; then
     mkdir -p "$DEPLOY_DIR"
     cd "$DEPLOY_DIR"
 
-    # Extract new deployment
+    # Extract new deployment first
     echo "🔍 DEBUG: Extracting new deployment..."
     tar -xzf /tmp/deployment.tar.gz
     
     echo "🔍 DEBUG: Deployment files extracted to $DEPLOY_DIR"
     echo "🔍 DEBUG: Deployment contents:"
     ls -la .
+
+    # Now clean up deployment files after extraction
+    echo "🧹 Cleaning up old deployment files..."
+    rm -f /tmp/deployment.tar.gz 2>/dev/null || true
 
     # Cleanup unnecessary files
     echo "🧹 Cleaning up unnecessary files..."
@@ -87,7 +87,6 @@ if [ "$1" = "remote" ]; then
 
     # Remove temporary files and credentials
     echo "🧹 Cleaning up temporary files and credentials..."
-    rm -f /tmp/deployment.tar.gz
     rm -f /tmp/deploy.sh
     
     # Clean old backups (keep only last 1)
