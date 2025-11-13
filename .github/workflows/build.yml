@@ -9,83 +9,87 @@ jobs:
   Build:
     name: Build and Package
     runs-on: ubuntu-latest
-
-    steps:
-    # 📁 File Listing Steps
-    - name: Install tree command
-      run: |
-        echo "📦 Installing tree command..."
-        sudo apt-get update
-        sudo apt-get install -y tree
-
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # Fetch all history for accurate builds
-
-    - name: List repository files
-      run: |
-        echo "🔍 DEBUG: Repository contents:"
-        tree -a  
     
-    - name: 🔍 DEBUG - Build Environment Info
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 2  # Fetch last 2 commits to detect changes
+    
+    - name: 🔍 Check for Changes
+      id: changes
       run: |
-        echo "🔍 DEBUG: Build Workflow Started"
-        echo "🔍 DEBUG: Repository: ${{ github.repository }}"
-        echo "🔍 DEBUG: Branch: ${{ github.ref_name }}"
-        echo "🔍 DEBUG: Commit: ${{ github.sha }}"
-        echo "🔍 DEBUG: Actor: ${{ github.actor }}"
-        echo "🔍 DEBUG: Event: ${{ github.event_name }}"
-        echo "🔍 DEBUG: Workflow: ${{ github.workflow }}"
-        echo "🔍 DEBUG: Job: ${{ github.job }}"
-        echo "🔍 DEBUG: Runner OS: ${{ runner.os }}"
-        echo "🔍 DEBUG: Runner Arch: ${{ runner.arch }}"
-        echo "🔍 DEBUG: Current Directory: $(pwd)"
-        echo "🔍 DEBUG: Available Disk Space: $(df -h . | tail -1)"
-        echo "🔍 DEBUG: Memory Info: $(free -h)"
+        echo "🔍 DEBUG: Checking for file changes..."
+        
+        # Check if this is the first commit
+        if ! git rev-parse HEAD~1 >/dev/null 2>&1; then
+          echo "🔍 DEBUG: First commit - full build required"
+          echo "changed=true" >> $GITHUB_OUTPUT
+          echo "reason=first-commit" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        
+        # Get list of changed files
+        CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+        echo "🔍 DEBUG: Changed files:"
+        echo "$CHANGED_FILES" | sed 's/^/  /'
+        
+        # Check if any source files changed
+        if echo "$CHANGED_FILES" | grep -E '\.(ts|tsx|js|jsx|css|html|json|vue)$|^src/|^public/|package\.json|vite\.config|tsconfig' >/dev/null; then
+          echo "🔍 DEBUG: Source files changed - build required"
+          echo "changed=true" >> $GITHUB_OUTPUT
+          echo "reason=source-changed" >> $GITHUB_OUTPUT
+        else
+          echo "🔍 DEBUG: No source files changed - using cache"
+          echo "changed=false" >> $GITHUB_OUTPUT
+          echo "reason=no-source-changes" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: 📦 Restore Build Cache
+      id: cache-restore
+      uses: actions/cache/restore@v3
+      with:
+        path: |
+          dist
+          node_modules
+          deployment-package
+        key: build-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'src/**/*', 'public/**/*', 'vite.config.ts', 'tsconfig.json') }}
+        restore-keys: |
+          build-cache-${{ runner.os }}-
     
     - name: Use Node.js
+      if: steps.changes.outputs.changed == 'true' || steps.cache-restore.outputs.cache-hit != 'true'
       uses: actions/setup-node@v4
       with:
         node-version: '22.x'
         cache: 'npm'
     
-    - name: 🔍 DEBUG - Node Environment
-      run: |
-        echo "🔍 DEBUG: Node.js version: $(node --version)"
-        echo "🔍 DEBUG: NPM version: $(npm --version)"
-        echo "🔍 DEBUG: NPM cache location: $(npm config get cache)"
-        echo "🔍 DEBUG: Package.json exists: $(test -f package.json && echo 'YES' || echo 'NO')"
-    
     - name: 📦 Install Dependencies
+      if: steps.changes.outputs.changed == 'true' || steps.cache-restore.outputs.cache-hit != 'true'
       run: |
         echo "🔍 DEBUG: Starting npm ci..."
         npm ci
-        npm i
         echo "🔍 DEBUG: Dependencies installed successfully"
-        echo "🔍 DEBUG: Node modules size: $(du -sh node_modules/ 2>/dev/null || echo 'N/A')"
-        ls -la node_modules/ | head -20
     
     - name: 🏗️ Build Application
+      if: steps.changes.outputs.changed == 'true' || steps.cache-restore.outputs.cache-hit != 'true'
       run: |
         echo "🔍 DEBUG: Starting build process..."
         npm run build --if-present
         echo "🔍 DEBUG: Build completed"
-        echo "🔍 DEBUG: Dist directory exists: $(test -d dist && echo 'YES' || echo 'NO')"
-        echo "🔍 DEBUG: Dist contents: $(ls -la dist/ 2>/dev/null || echo 'No dist directory')"
-        tree -I dist/
-    
-    - name: Make build script executable
-      run: |
-        echo "🔍 DEBUG: Making build script executable..."
-        chmod +x ./.github/scripts/build.sh
-        echo "🔍 DEBUG: Build script permissions: $(ls -la ./.github/scripts/build.sh)"
     
     - name: 📦 Create deployment package
       run: |
-        echo "🔍 DEBUG: Starting deployment package creation..."
-        ./.github/scripts/build.sh
-        echo "🔍 DEBUG: Deployment package creation completed"
+        chmod +x ./.github/scripts/build.sh
+        if [ "${{ steps.changes.outputs.changed }}" == "true" ] || [ "${{ steps.cache-restore.outputs.cache-hit }}" != "true" ]; then
+          echo "🔍 DEBUG: Creating fresh deployment package..."
+          ./.github/scripts/build.sh
+        else
+          echo "🔍 DEBUG: Using cached deployment package..."
+          if [ ! -d "deployment-package" ]; then
+            echo "❌ Cache miss - creating deployment package..."
+            ./.github/scripts/build.sh
+          fi
+        fi
     
     - name: Final Security Verification
       run: |
@@ -96,23 +100,16 @@ jobs:
         fi
         echo "✅ SECURITY CLEARED: Artifact contains only built files"
     
-    - name: List deployment package contents BEFORE upload
-      run: |
-        echo "📦 DEPLOYMENT PACKAGE CONTENTS (BEFORE UPLOAD):"
-        echo "=============================================="
-        if [ -d "deployment-package" ]; then
-          echo "🌳 Tree structure:"
-          find deployment-package/ -type f | sed 's|deployment-package/||' | sort | sed 's|[^/]*/|- |g'
-          echo ""
-          echo "📊 File details:"
-          ls -la deployment-package/
-          tree deployment-package/
-          echo ""
-          echo "📈 Total files: $(find deployment-package/ -type f | wc -l)"
-        else
-          echo "❌ deployment-package directory not found!"
-        fi
-
+    - name: 💾 Save Build Cache
+      if: steps.changes.outputs.changed == 'true' || steps.cache-restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v3
+      with:
+        path: |
+          dist
+          node_modules
+          deployment-package
+        key: build-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'src/**/*', 'public/**/*', 'vite.config.ts', 'tsconfig.json') }}
+    
     - name: Upload deployment artifact
       uses: actions/upload-artifact@v4
       with:
@@ -127,18 +124,11 @@ jobs:
         path: deployment-package/
         retention-days: 7
         overwrite: true
-        
-    - name: Show artifact upload confirmation
-      run: |
-        echo "✅ Artifact 'deployment-build' uploaded successfully!"
-        echo "📁 Path: deployment-package/"
-        echo "⏰ Retention: 7 days"
     
     - name: 🔍 DEBUG - Build Complete
       run: |
         echo "🎉 Build completed successfully! Artifact ready for deployment."
+        echo "🔍 DEBUG: Build reason: ${{ steps.changes.outputs.reason }}"
+        echo "🔍 DEBUG: Cache hit: ${{ steps.cache-restore.outputs.cache-hit }}"
+        echo "🔍 DEBUG: Changes detected: ${{ steps.changes.outputs.changed }}"
         echo "🔍 DEBUG: Build workflow finished at $(date)"
-        echo "🔍 DEBUG: Final deployment package contents:"
-        ls -la deployment-package/ 2>/dev/null || echo "No deployment package found"
-        echo "🔍 DEBUG: Artifact upload completed"
-        echo "🔍 DEBUG: Build job ending..."
