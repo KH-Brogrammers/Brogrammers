@@ -9,6 +9,8 @@ on:
         required: true
       SSH_KEY:
         required: true
+      USERNAME:
+        required: true
       WORK_FOLDER:
         required: true
 
@@ -43,30 +45,33 @@ jobs:
         echo "🔍 DEBUG: Artifact Size:"
         du -sh ./deployment-package/ || echo "❌ Cannot calculate size"
     
-    - name: 🔑 Setup SSH Key
+    - name: 🔑 Setup SSH with Password Authentication
       run: |
-        echo "🔍 DEBUG: Setting up SSH key..."
+        echo "🔍 DEBUG: Setting up SSH with password authentication..."
+        sudo apt-get update
+        sudo apt-get install -y sshpass
+        
+        # Add server to known hosts for security
         mkdir -p ~/.ssh
-        echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
         ssh-keyscan -H ${{ secrets.BROGRAMMERS_VPN }} >> ~/.ssh/known_hosts
-        echo "🔍 DEBUG: SSH key configured"
+        echo "🔍 DEBUG: SSH configured with host verification"
     
     - name: 🚀 Deploy to Server
       run: |
         echo "🔍 DEBUG: Starting deployment to server..."
         echo "🔍 DEBUG: Connecting to: ${{ secrets.BROGRAMMERS_VPN }}"
+        echo "🔍 DEBUG: Username: ${{ secrets.USERNAME }}"
         echo "🔍 DEBUG: Target folder: ${{ secrets.WORK_FOLDER }}"
         
         # Create deployment package archive
         tar -czf deployment.tar.gz -C ./deployment-package .
         
-        # Copy files and deploy script to server
-        scp -i ~/.ssh/id_rsa deployment.tar.gz root@${{ secrets.BROGRAMMERS_VPN }}:/tmp/
-        scp -i ~/.ssh/id_rsa ./.github/scripts/deploy.sh root@${{ secrets.BROGRAMMERS_VPN }}:/tmp/
+        # Copy files and deploy script to server using password authentication
+        sshpass -p "${{ secrets.SSH_PASSWORD }}" scp deployment.tar.gz ${{ secrets.USERNAME }}@${{ secrets.BROGRAMMERS_VPN }}:/tmp/
+        sshpass -p "${{ secrets.SSH_PASSWORD }}" scp ./.github/scripts/deploy.sh ${{ secrets.USERNAME }}@${{ secrets.BROGRAMMERS_VPN }}:/tmp/
         
         # Execute deployment script on server
-        ssh -i ~/.ssh/id_rsa root@${{ secrets.BROGRAMMERS_VPN }} << EOF
+        sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh ${{ secrets.USERNAME }}@${{ secrets.BROGRAMMERS_VPN }} << 'EOF'
           echo "🔍 DEBUG: Connected to server successfully"
           chmod +x /tmp/deploy.sh
           WORK_FOLDER="${{ secrets.WORK_FOLDER }}" /tmp/deploy.sh
@@ -77,6 +82,6 @@ jobs:
     
     - name: 🧹 Cleanup
       run: |
-        echo "🔍 DEBUG: Cleaning up SSH keys..."
-        rm -f ~/.ssh/id_rsa
+        echo "🔍 DEBUG: Cleaning up temporary files..."
+        rm -f deployment.tar.gz
         echo "🔍 DEBUG: Cleanup completed"
