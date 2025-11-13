@@ -76,20 +76,43 @@ if [ "$1" = "remote" ]; then
 
     # Create work directory and parent directories if they don't exist
     echo "🔍 DEBUG: Creating work directory: $WORK_FOLDER"
-    mkdir -p "$WORK_FOLDER"
+    echo "🔍 DEBUG: Current user: $(whoami)"
+    echo "🔍 DEBUG: Current directory before mkdir: $(pwd)"
+    echo "🔍 DEBUG: Home directory: $HOME"
+    
+    # Try to create the directory
+    if mkdir -p "$WORK_FOLDER" 2>/dev/null; then
+        echo "🔍 DEBUG: Directory created/exists successfully"
+    else
+        echo "❌ ERROR: Failed to create directory $WORK_FOLDER"
+        echo "🔍 DEBUG: Trying to create in home directory instead..."
+        WORK_FOLDER="$HOME/deployment"
+        mkdir -p "$WORK_FOLDER"
+        echo "🔍 DEBUG: Using fallback directory: $WORK_FOLDER"
+    fi
+    
+    echo "🔍 DEBUG: Directory permissions: $(ls -ld "$WORK_FOLDER" 2>/dev/null || echo 'Cannot check permissions')"
 
     # Extract new deployment
     echo "🔍 DEBUG: Extracting new deployment..."
+    echo "🔍 DEBUG: Changing to directory: $WORK_FOLDER"
     cd "$WORK_FOLDER"
     
     # Check if deployment archive exists
     if [ ! -f "/tmp/deployment.tar.gz" ]; then
         echo "❌ Error: Deployment archive not found at /tmp/deployment.tar.gz"
+        echo "🔍 DEBUG: Contents of /tmp/:"
+        ls -la /tmp/ | grep -E "(deploy|tar)" || echo "No deployment files found"
         exit 1
     fi
     
+    echo "🔍 DEBUG: Archive size: $(ls -lh /tmp/deployment.tar.gz)"
     tar -xzf /tmp/deployment.tar.gz
-
+    
+    echo "🔍 DEBUG: Extraction completed"
+    echo "🔍 DEBUG: Files in current directory after extraction:"
+    ls -la . || echo "Cannot list current directory"
+    
     echo "🔍 DEBUG: Deployment files extracted to $WORK_FOLDER"
     echo "🔍 DEBUG: Current directory: $(pwd)"
     echo "🔍 DEBUG: Deployment contents:"
