@@ -50,17 +50,23 @@ copy_with_password() {
 
 # Function to execute remote deployment with SSH key
 execute_with_key() {
-    ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $USERNAME@$BROGRAMMERS_VPN "chmod +x /tmp/deploy.sh && WORK_FOLDER='$WORK_FOLDER' /tmp/deploy.sh remote"
+    ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $USERNAME@$BROGRAMMERS_VPN "chmod +x /tmp/deploy.sh && WORK_FOLDER='$WORK_FOLDER' BROGRAMMERS_VPN='$BROGRAMMERS_VPN' USERNAME='$USERNAME' /tmp/deploy.sh remote"
 }
 
 # Function to execute remote deployment with password
 execute_with_password() {
-    sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no $USERNAME@$BROGRAMMERS_VPN "chmod +x /tmp/deploy.sh && WORK_FOLDER='$WORK_FOLDER' /tmp/deploy.sh remote"
+    sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no $USERNAME@$BROGRAMMERS_VPN "chmod +x /tmp/deploy.sh && WORK_FOLDER='$WORK_FOLDER' BROGRAMMERS_VPN='$BROGRAMMERS_VPN' USERNAME='$USERNAME' /tmp/deploy.sh remote"
 }
 
 # Check if this is remote execution
 if [ "$1" = "remote" ]; then
     echo "🔍 DEBUG: Executing on remote server..."
+    
+    # Verify WORK_FOLDER is set for remote execution
+    if [ -z "$WORK_FOLDER" ]; then
+        echo "❌ Error: WORK_FOLDER not set for remote execution!"
+        exit 1
+    fi
     
     # Create backup of current deployment
     echo "🔍 DEBUG: Creating backup of current deployment..."
