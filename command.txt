@@ -28,8 +28,30 @@ sudo apt install cloudflared
 # Run tunnel
 cloudflared tunnel --url http://localhost:80
 
+✅ How to Expose Your Raspberry Pi With a Hidden Public URL
+Step 1 → Run the tunnel
 
-# Install ngrok
-wget https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-arm64.zip
-unzip ngrok-stable-linux-arm64.zip
-./ngrok http 80
+    cloudflared tunnel --url http://localhost
+
+                or
+    cloudflared tunnel --url http://100.122.35.67:80
+
+🔸 The tunnel closes when your terminal closes
+    nohup cloudflared tunnel --url http://localhost &
+
+
+1️⃣ Kill old tunnel
+    pkill cloudflared
+2️⃣ Remove old nohup.out
+    rm nohup.out
+3️⃣ Start new tunnel (in background)
+    nohup cloudflared tunnel --url http://100.122.35.67:80 &
+    nohup cloudflared tunnel --url http://localhost &
+4️⃣ Wait 3 seconds, then check URL
+    head -n 20 nohup.out
+
+public url:- https://undertake-their-catalyst-matrix.trycloudflare.com, :-http://100.122.35.67:80
+
+public url:- https://undertake-their-catalyst-matrix.trycloudflare.com , :-http://localhost
+
+
