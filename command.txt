@@ -16,3 +16,20 @@ $ ./run.sh
 Using your self-hosted runner
 # Use this YAML in your workflow file for each job
 runs-on: self-hosted
+
+
+sudo nginx -t
+sudo systemctl reload nginx
+
+
+# Install cloudflared
+sudo apt install cloudflared
+
+# Run tunnel
+cloudflared tunnel --url http://localhost:80
+
+
+# Install ngrok
+wget https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-arm64.zip
+unzip ngrok-stable-linux-arm64.zip
+./ngrok http 80

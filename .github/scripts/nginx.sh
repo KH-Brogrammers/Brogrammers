@@ -47,9 +47,15 @@ server {
     root $APP_DIR;
     index index.html index.htm;
     
-    # Handle React Router or SPA
+    # Handle React Router or SPA with reverse proxy headers
     location / {
         try_files \$uri \$uri/ /index.html;
+        
+        # Reverse proxy headers for public access
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
     
 
