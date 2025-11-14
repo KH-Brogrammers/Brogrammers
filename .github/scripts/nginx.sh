@@ -6,7 +6,7 @@ set -e
 echo "🔧 Configuring nginx for brogrammers deployment..."
 
 # Define variables
-DOMAIN="www.brogrammers.local.com"  # Change this to your domain
+DOMAIN="brogrammers.com, www.brogrammers.com, localhost, _, www.brogrammers.local";
 APP_DIR="/home/tagglabs/brogrammers"
 NGINX_AVAILABLE="/etc/nginx/sites-available"
 NGINX_ENABLED="/etc/nginx/sites-enabled"
@@ -126,6 +126,15 @@ fi
 echo "🔄 Restarting nginx..."
 sudo systemctl restart nginx
 sudo systemctl enable nginx
+
+# Set proper file permissions
+echo "🔐 Setting file permissions..."
+sudo chown -R tagglabs:www-data "$APP_DIR"
+sudo chmod -R 755 "$APP_DIR"
+
+# Configure firewall
+echo "🔥 Configuring firewall..."
+sudo ufw allow 80/tcp >/dev/null 2>&1 || echo "⚠️ UFW not available or already configured"
 
 # Check nginx status
 echo "📊 Nginx status:"
