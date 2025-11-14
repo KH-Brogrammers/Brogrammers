@@ -49,11 +49,17 @@ jobs:
           echo "📁 Checking deployment files..."
           ls -la /home/tagglabs/brogrammers/
           
-          echo "🌐 Testing localhost access..."
-          curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" http://localhost || echo "❌ Localhost test failed"
+          echo "🌐 Testing website accessibility..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost)
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "✅ SUCCESS: Website is running! (HTTP Status: $HTTP_STATUS)"
+            echo "🎉 Deployment successful - Site accessible at http://localhost"
+          else
+            echo "❌ FAILED: Website not accessible (HTTP Status: $HTTP_STATUS)"
+          fi
           
-          echo "📊 Nginx status check..."
-          sudo systemctl status nginx --no-pager --lines=3
+          echo "📊 Nginx service status..."
+          sudo systemctl is-active nginx && echo "✅ Nginx is running" || echo "❌ Nginx is not running"
         '
         
         echo "✅ Deployment test completed!"
