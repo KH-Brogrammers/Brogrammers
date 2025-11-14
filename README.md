@@ -40,8 +40,8 @@
 
 ### 🌐 Live Deployment
 
-- **Production URL**: `http://100.122.35.67` → [https://undertake-their-catalyst-matrix.trycloudflare.com]
-- **Local Access**: `http://localhost` → [https://undertake-their-catalyst-matrix.trycloudflare.com]
+- **Production URL**: → [`https://undertake-their-catalyst-matrix.trycloudflare.com`]
+- **Local Access**: → [`https://undertake-their-catalyst-matrix.trycloudflare.com`]
 
 
 - **Supported Domains**: Multiple domain configurations for flexible access
