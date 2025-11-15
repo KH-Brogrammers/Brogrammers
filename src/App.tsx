@@ -45,7 +45,7 @@ function App() {
 
           <div className="mt-6 pt-6 border-t border-slate-800 text-center">
             <p className="text-xs text-gray-500">
-              © 2025 Brogrammers. All rights reserved.
+              © {new Date().getFullYear()} Brogrammers. All rights reserved.
             </p>
           </div>
         </div>
