@@ -23,8 +23,13 @@ export const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <a href="#" className="text-2xl font-bold">
-            <span className="bg-gradient-to-r from-blue-400 to-amber-400 bg-clip-text text-transparent">
+          <a href="#" className="flex items-center gap-3">
+            <img 
+              src="/logo.png" 
+              alt="Brogrammers Logo" 
+              className="w-8 h-8 object-contain bg-transparent"
+            />
+            <span className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-amber-400 bg-clip-text text-transparent">
               Brogrammers
             </span>
           </a>
