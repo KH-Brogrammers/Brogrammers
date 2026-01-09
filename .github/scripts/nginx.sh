@@ -6,7 +6,7 @@ set -e
 echo "🔧 Configuring nginx for brogrammers deployment..."
 
 # Define variables
-DOMAIN="brogrammers.com, www.brogrammers.com, localhost, _, www.brogrammers.local";
+DOMAIN="brogrammers.com www.brogrammers.com localhost _ www.brogrammers.local"
 APP_DIR="/home/tagglabs/brogrammers"
 NGINX_AVAILABLE="/etc/nginx/sites-available"
 NGINX_ENABLED="/etc/nginx/sites-enabled"
@@ -36,10 +36,21 @@ fi
 # Create nginx configuration
 echo "📝 Writing nginx configuration for $DOMAIN..."
 
-sudo tee "$NGINX_AVAILABLE/$CONFIG_NAME" > /dev/null <<EOF
+NGINX_CONF="$NGINX_AVAILABLE/$CONFIG_NAME"
+
+# Detect Brotli support
+if nginx -V 2>&1 | grep -q brotli; then
+    HAS_BROTLI=yes
+else
+    HAS_BROTLI=no
+fi
+
+# Write base nginx config (gzip only)
+sudo tee "$NGINX_CONF" > /dev/null <<EOF
+# Basic nginx configuration for brogrammers
 server {
-    listen 80;
-    listen [::]:80;
+    listen 84;
+    listen [::]:84;
     
     server_name $DOMAIN localhost;
     
@@ -47,18 +58,16 @@ server {
     root $APP_DIR;
     index index.html index.htm;
     
-    # Handle React Router or SPA with reverse proxy headers
+    # Handle React Router or SPA
     location / {
-        try_files \$uri \$uri/ /index.html;
+        try_files $uri $uri/ /index.html;
         
         # Reverse proxy headers for public access
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
-    
-
     
     # Security - deny access to sensitive files
     location ~ /\. {
@@ -75,6 +84,13 @@ server {
     add_header X-Frame-Options DENY;
     add_header X-Content-Type-Options nosniff;
     add_header X-XSS-Protection "1; mode=block";
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+    
+    # Additional security headers
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Permitted-Cross-Domain-Policies none always;
+    add_header X-Robots-Tag none;
     
     # Gzip compression
     gzip on;
@@ -104,6 +120,40 @@ server {
         text/xml;
 }
 EOF
+
+# Append Brotli ONLY if supported
+if [ "$HAS_BROTLI" = "yes" ]; then
+    echo "✅ Brotli supported — enabling Brotli compression"
+    sudo sed -i '/gzip_types/a\
+    \
+    # Enable Brotli compression for better compression ratios\
+    brotli on;\
+    brotli_vary on;\
+    brotli_comp_level 6;\
+    brotli_min_length 1024;\
+    brotli_types\
+        application/atom+xml\
+        application/geo+json\
+        application/javascript\
+        application/x-javascript\
+        application/json\
+        application/ld+json\
+        application/manifest+json\
+        application/rdf+xml\
+        application/rss+xml\
+        application/xhtml+xml\
+        application/xml\
+        font/eot\
+        font/otf\
+        font/ttf\
+        image/svg+xml\
+        text/css\
+        text/javascript\
+        text/plain\
+        text/xml;' "$NGINX_CONF"
+else
+    echo "⚠️ Brotli not supported — using gzip only"
+fi
 
 echo "✅ Nginx configuration created at $NGINX_AVAILABLE/$CONFIG_NAME"
 
@@ -140,7 +190,7 @@ sudo chmod -R 755 "$APP_DIR"
 
 # Configure firewall
 echo "🔥 Configuring firewall..."
-sudo ufw allow 80/tcp >/dev/null 2>&1 || echo "⚠️ UFW not available or already configured"
+sudo ufw allow 84/tcp >/dev/null 2>&1 || echo "⚠️ UFW not available or already configured"
 
 # Check nginx status
 echo "📊 Nginx status:"
@@ -153,8 +203,9 @@ echo "   Available: $NGINX_AVAILABLE/$CONFIG_NAME"
 echo "   Enabled:   $NGINX_ENABLED/$CONFIG_NAME"
 echo ""
 echo "🌐 Your app is available at:"
-echo "   http://$DOMAIN"
-echo "   http://localhost"
+echo "   http://brogrammers.com:84"
+echo "   http://www.brogrammers.com:84"
+echo "   http://localhost:84"
 echo ""
 echo "✅ Nginx is now configured for brogrammers deployment"
 
