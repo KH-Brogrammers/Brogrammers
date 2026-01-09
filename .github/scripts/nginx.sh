@@ -107,32 +107,6 @@ server {
         text/javascript
         text/plain
         text/xml;
-    
-    # Enable Brotli compression for better compression ratios
-    brotli on;
-    brotli_vary on;
-    brotli_comp_level 6;
-    brotli_min_length 1024;
-    brotli_types
-        application/atom+xml
-        application/geo+json
-        application/javascript
-        application/x-javascript
-        application/json
-        application/ld+json
-        application/manifest+json
-        application/rdf+xml
-        application/rss+xml
-        application/xhtml+xml
-        application/xml
-        font/eot
-        font/otf
-        font/ttf
-        image/svg+xml
-        text/css
-        text/javascript
-        text/plain
-        text/xml;
 }
 EOF
 
