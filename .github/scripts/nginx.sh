@@ -49,6 +49,12 @@ server {
     # Handle React Router or SPA with reverse proxy headers
     location / {
         try_files $uri $uri/ /index.html;
+
+        # Reverse proxy headers for public access
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;  
     }
     
     # Security - deny access to sensitive files
@@ -57,11 +63,6 @@ server {
         access_log off;
         log_not_found off;
     }
-    # Reverse proxy headers for public access
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;    
     
     # Security headers
     add_header X-Frame-Options DENY;
@@ -165,7 +166,7 @@ sudo chmod -R 755 "$APP_DIR"
 
 # Configure firewall
 echo "🔥 Configuring firewall..."
-sudo ufw allow 80/tcp >/dev/null 2>&1 || echo "⚠️ UFW not available or already configured"
+sudo ufw allow 84/tcp >/dev/null 2>&1 || echo "⚠️ UFW not available or already configured"
 
 # Check nginx status
 echo "📊 Nginx status:"
@@ -179,7 +180,7 @@ echo "   Enabled:   $NGINX_ENABLED/$CONFIG_NAME"
 echo ""
 echo "🌐 Your app is available at:"
 echo "   http://$DOMAIN"
-echo "   http://localhost"
+echo "   http://localhost:84"
 echo ""
 echo "✅ Nginx is now configured for brogrammers deployment"
 
