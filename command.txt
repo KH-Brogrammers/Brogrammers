@@ -50,8 +50,33 @@ Step 1 → Run the tunnel
 4️⃣ Wait 3 seconds, then check URL
     head -n 20 nohup.out
 
+ps aux | grep cloudflared
+tail -f nohup.out
+
+
 public url:- https://undertake-their-catalyst-matrix.trycloudflare.com, :-http://100.122.35.67:80
 
 public url:- https://undertake-their-catalyst-matrix.trycloudflare.com , :-http://localhost
 
 
+
+
+
+Install and run a connector
+# Add cloudflare gpg key
+sudo mkdir -p --mode=0755 /usr/share/keyrings
+curl -fsSL https://pkg.cloudflare.com/cloudflare-public-v2.gpg | sudo tee /usr/share/keyrings/cloudflare-public-v2.gpg >/dev/null
+
+# Add this repo to your apt repositories
+echo 'deb [signed-by=/usr/share/keyrings/cloudflare-public-v2.gpg] https://pkg.cloudflare.com/cloudflared any main' | sudo tee /etc/apt/sources.list.d/cloudflared.list
+
+# install cloudflared
+sudo apt-get update && sudo apt-get install cloudflared
+
+
+sudo cloudflared service install eyJhIjoiM2ExNTBiMGIyOGNmN2FlYzY4OWU3ZjViMGNjM2ZmODkiLCJ0IjoiNzBhNzdhZGEtYzA2My00ZDg4LTg2MWEtMzg4MmUzZWNhYzBhIiwicyI6IlpETmtOMlZsWXpJdE5UTTNaUzAwTlRFd0xUa3lPR010TldWbFlUUTVZekU0WWpreSJ9
+
+cloudflared tunnel run --token eyJhIjoiM2ExNTBiMGIyOGNmN2FlYzY4OWU3ZjViMGNjM2ZmODkiLCJ0IjoiNzBhNzdhZGEtYzA2My00ZDg4LTg2MWEtMzg4MmUzZWNhYzBhIiwicyI6IlpETmtOMlZsWXpJdE5UTTNaUzAwTlRFd0xUa3lPR010TldWbFlUUTVZekU0WWpreSJ9
+
+
+Your tunnel ID is: `70a77ada-c063-4d88-861a-3882e3ecac0a` 

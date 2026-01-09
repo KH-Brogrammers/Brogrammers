@@ -38,27 +38,18 @@ echo "📝 Writing nginx configuration for $DOMAIN..."
 
 sudo tee "$NGINX_AVAILABLE/$CONFIG_NAME" > /dev/null <<EOF
 server {
-    listen 80;
-    listen [::]:80;
+    listen 84;
+    listen [::]:84;
     
-    server_name $DOMAIN localhost;
-    
+    server_name _;    
     # Root directory
-    root $APP_DIR;
+    root /home/tagglabs/brogrammers;
     index index.html index.htm;
     
     # Handle React Router or SPA with reverse proxy headers
     location / {
-        try_files \$uri \$uri/ /index.html;
-        
-        # Reverse proxy headers for public access
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        try_files $uri $uri/ /index.html;
     }
-    
-
     
     # Security - deny access to sensitive files
     location ~ /\. {
@@ -66,15 +57,22 @@ server {
         access_log off;
         log_not_found off;
     }
-    
-    location ~ /\.ht {
-        deny all;
-    }
+    # Reverse proxy headers for public access
+    proxy_set_header Host tagglabs;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;    
     
     # Security headers
     add_header X-Frame-Options DENY;
-    add_header X-Content-Type-Options nosniff;
     add_header X-XSS-Protection "1; mode=block";
+    add_header Referrer-Policy "strict-origin-when-cross-origin";
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()";
+    
+    # Additional security headers
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Permitted-Cross-Domain-Policies none always;
+    add_header X-Robots-Tag none;
     
     # Gzip compression
     gzip on;
@@ -82,6 +80,7 @@ server {
     gzip_min_length 1024;
     gzip_proxied any;
     gzip_comp_level 6;
+    gzip_http_version 1.1;
     gzip_types
         application/atom+xml
         application/geo+json
@@ -102,7 +101,34 @@ server {
         text/javascript
         text/plain
         text/xml;
+    
+    # Enable Brotli compression for better compression ratios
+    brotli on;
+    brotli_vary on;
+    brotli_comp_level 6;
+    brotli_min_length 1024;
+    brotli_types
+        application/atom+xml
+        application/geo+json
+        application/javascript
+        application/x-javascript
+        application/json
+        application/ld+json
+        application/manifest+json
+        application/rdf+xml
+        application/rss+xml
+        application/xhtml+xml
+        application/xml
+        font/eot
+        font/otf
+        font/ttf
+        image/svg+xml
+        text/css
+        text/javascript
+        text/plain
+        text/xml;
 }
+
 EOF
 
 echo "✅ Nginx configuration created at $NGINX_AVAILABLE/$CONFIG_NAME"
