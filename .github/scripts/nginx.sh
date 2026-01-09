@@ -62,6 +62,7 @@ server {
         try_files $uri $uri/ /index.html;
     }
     
+    
     # Security - deny access to sensitive files
     location ~ /\. {
         deny all;
