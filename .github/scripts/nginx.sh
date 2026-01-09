@@ -7,7 +7,7 @@ echo "🔧 Configuring nginx for brogrammers deployment..."
 
 # Define variables
 DOMAIN="brogrammers.com, www.brogrammers.com, localhost, _, www.brogrammers.local";
-APP_DIR="/home/tagglabs/brogrammers"
+APP_DIR="/home/$host/brogrammers"
 NGINX_AVAILABLE="/etc/nginx/sites-available"
 NGINX_ENABLED="/etc/nginx/sites-enabled"
 CONFIG_NAME="brogrammers"
@@ -43,7 +43,7 @@ server {
     
     server_name _;    
     # Root directory
-    root /home/tagglabs/brogrammers;
+    root /home/$host/brogrammers;
     index index.html index.htm;
     
     # Handle React Router or SPA with reverse proxy headers
@@ -58,7 +58,7 @@ server {
         log_not_found off;
     }
     # Reverse proxy headers for public access
-    proxy_set_header Host tagglabs;
+    proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;    
@@ -128,7 +128,6 @@ server {
         text/plain
         text/xml;
 }
-
 EOF
 
 echo "✅ Nginx configuration created at $NGINX_AVAILABLE/$CONFIG_NAME"
@@ -161,7 +160,7 @@ sudo systemctl enable nginx
 
 # Set proper file permissions
 echo "🔐 Setting file permissions..."
-sudo chown -R tagglabs:www-data "$APP_DIR"
+sudo chown -R $host:www-data "$APP_DIR"
 sudo chmod -R 755 "$APP_DIR"
 
 # Configure firewall
