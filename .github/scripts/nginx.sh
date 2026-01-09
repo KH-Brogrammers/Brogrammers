@@ -54,12 +54,12 @@ server {
     
     server_name _;    
     # Root directory
-    root /home/$host/brogrammers;
+    root /home/tagglabs/brogrammers;
     index index.html index.htm;
     
     # Handle React Router or SPA
     location / {
-        try_files $uri $uri/ /index.html;
+        try_files \$uri \$uri/ /index.html;
     }
     
     # Security - deny access to sensitive files
@@ -175,7 +175,7 @@ sudo systemctl enable nginx
 
 # Set proper file permissions
 echo "🔐 Setting file permissions..."
-sudo chown -R $host:www-data "$APP_DIR"
+sudo chown -R tagglabs:www-data "$APP_DIR"
 sudo chmod -R 755 "$APP_DIR"
 
 # Configure firewall
