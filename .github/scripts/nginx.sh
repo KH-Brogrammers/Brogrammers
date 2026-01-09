@@ -62,7 +62,6 @@ server {
         try_files $uri $uri/ /index.html;
     }
     
-    
     # Security - deny access to sensitive files
     location ~ /\. {
         deny all;
@@ -137,38 +136,39 @@ server {
 }
 EOF
 
-# Append Brotli ONLY if supported
+# Append Brotli if supported (Gzip is already included above)
 if [ "$HAS_BROTLI" = "yes" ]; then
-    echo "✅ Brotli supported — enabling Brotli compression"
-    sudo sed -i '/gzip_types/a\
-    \
-    # Enable Brotli compression for better compression ratios\
-    brotli on;\
-    brotli_vary on;\
-    brotli_comp_level 6;\
-    brotli_min_length 1024;\
-    brotli_types\
-        application/atom+xml\
-        application/geo+json\
-        application/javascript\
-        application/x-javascript\
-        application/json\
-        application/ld+json\
-        application/manifest+json\
-        application/rdf+xml\
-        application/rss+xml\
-        application/xhtml+xml\
-        application/xml\
-        font/eot\
-        font/otf\
-        font/ttf\
-        image/svg+xml\
-        text/css\
-        text/javascript\
-        text/plain\
+    echo "✅ Brotli supported — enabling both Gzip and Brotli compression"
+
+    sudo sed -i '/text\/xml;/a \
+\
+    # Enable Brotli compression (in addition to Gzip) \
+    brotli on; \
+    brotli_vary on; \
+    brotli_comp_level 6; \
+    brotli_min_length 1024; \
+    brotli_types \
+        application/atom+xml \
+        application/geo+json \
+        application/javascript \
+        application/x-javascript \
+        application/json \
+        application/ld+json \
+        application/manifest+json \
+        application/rdf+xml \
+        application/rss+xml \
+        application/xhtml+xml \
+        application/xml \
+        font/eot \
+        font/otf \
+        font/ttf \
+        image/svg+xml \
+        text/css \
+        text/javascript \
+        text/plain \
         text/xml;' "$NGINX_CONF"
 else
-    echo "⚠️ Brotli not supported — using gzip only"
+    echo "⚠️ Brotli not supported — using Gzip compression only"
 fi
 
 echo "✅ Nginx configuration created at $NGINX_AVAILABLE/$CONFIG_NAME"
